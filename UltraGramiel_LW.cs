@@ -212,8 +212,16 @@ public class UltraGramiel_LW
             if (
                 !PrepareSafeRoom(preset)
                 || !StartCrystalPacketDetector()
-                || !Sync("FIGHT_READY")
             )
+                return false;
+
+            bool usePhaseTwoSlowdown = ShouldUsePhaseTwoSlowdown();
+            if (!usePhaseTwoSlowdown && IsPhaseTwoSlowdownOwner())
+                Core.Logger(
+                    $"{LogPrefix} {playerAlias} disabled Phase 2 slowdown because the equipped weapon is below 40% damage boost."
+                );
+
+            if (!Sync("FIGHT_READY"))
                 return false;
 
             Core.Jump(FightCell, FightPad);
@@ -221,7 +229,11 @@ public class UltraGramiel_LW
             PhaseResult result = FightPhaseOne(preset, fightAttempt);
             if (result == PhaseResult.Completed)
             {
-                result = FightPhaseTwo(preset, fightAttempt);
+                result = FightPhaseTwo(
+                    preset,
+                    fightAttempt,
+                    usePhaseTwoSlowdown
+                );
                 if (result == PhaseResult.Completed)
                     return true;
             }
@@ -439,7 +451,11 @@ public class UltraGramiel_LW
         return FinishPhaseOne(PhaseResult.Completed);
     }
 
-    private PhaseResult FightPhaseTwo(ClassPreset preset, int fightAttempt)
+    private PhaseResult FightPhaseTwo(
+        ClassPreset preset,
+        int fightAttempt,
+        bool usePhaseTwoSlowdown
+    )
     {
         int[] normalSkills = GetPhaseTwoSkills(preset);
         LoneWolf.StartSkillEngine(
@@ -458,6 +474,7 @@ public class UltraGramiel_LW
         int nextAttack = 1;
         int ownedAttack = GetPhaseTwoTauntAttack();
         PhaseTwoDetectorState detectorState = PhaseTwoDetectorState.Attacks;
+        bool rotationRestricted = false;
 
         while (!Bot.ShouldExit)
         {
@@ -529,18 +546,20 @@ public class UltraGramiel_LW
                         int attack = nextAttack++;
 
                         if (
-                            armyComposition == ArmyComposition.Default
+                            usePhaseTwoSlowdown
+                            && armyComposition == ArmyComposition.Default
                             && LoneWolf.IsArmyPlayer(3)
                             && attack == 1
                         )
                         {
                             LoneWolf.SetSkillEngineSkills(new[] { 2 });
+                            rotationRestricted = true;
                             Core.Logger($"{LogPrefix} playerThree restricted its rotation to {{2}} on playerOne's taunt attack.");
                         }
 
                         if (IsOptimizedShaman())
                         {
-                            if (attack == 3)
+                            if (attack == 3 && usePhaseTwoSlowdown)
                             {
                                 LoneWolf.SetShamanSkillThreeEnabled(false);
                                 Core.Logger($"{LogPrefix} playerOne disabled skill 3 on nuke cycle {nukeCycle}, attack 3.");
@@ -548,8 +567,11 @@ public class UltraGramiel_LW
 
                             if (attack == 7)
                             {
-                                LoneWolf.SetShamanSkillThreeEnabled(true);
-                                Core.Logger($"{LogPrefix} playerOne restored skill 3 on nuke cycle {nukeCycle}, attack 7.");
+                                if (usePhaseTwoSlowdown)
+                                {
+                                    LoneWolf.SetShamanSkillThreeEnabled(true);
+                                    Core.Logger($"{LogPrefix} playerOne restored skill 3 on nuke cycle {nukeCycle}, attack 7.");
+                                }
 
                                 if (!StartChargeTwoPacketDetector())
                                     return FinishPhaseTwo(PhaseResult.Stopped);
@@ -574,8 +596,14 @@ public class UltraGramiel_LW
                             || LoneWolf.IsArmyPlayer(3)
                         )
                         {
-                            if (LoneWolf.IsArmyPlayer(1))
+                            if (
+                                LoneWolf.IsArmyPlayer(1)
+                                && usePhaseTwoSlowdown
+                            )
+                            {
                                 LoneWolf.SetSkillEngineSkills(new[] { 3 });
+                                rotationRestricted = true;
+                            }
 
                             if (!StartLiberatorPacketDetector())
                                 return FinishPhaseTwo(PhaseResult.Stopped);
@@ -599,8 +627,14 @@ public class UltraGramiel_LW
                     if (!LoneWolf.HasPacketDetection(1))
                         break;
 
-                    LoneWolf.SetSkillEngineSkills(normalSkills);
-                    Core.Logger($"{LogPrefix} {playerAlias} detected Liberator in a {LoneWolf.GetPacketDetectorCommand()} packet and restored its normal rotation.");
+                    if (rotationRestricted)
+                    {
+                        LoneWolf.SetSkillEngineSkills(normalSkills);
+                        rotationRestricted = false;
+                        Core.Logger($"{LogPrefix} {playerAlias} detected Liberator in a {LoneWolf.GetPacketDetectorCommand()} packet and restored its normal rotation.");
+                    }
+                    else
+                        Core.Logger($"{LogPrefix} {playerAlias} detected Liberator in a {LoneWolf.GetPacketDetectorCommand()} packet.");
 
                     if (!StartChargeTwoPacketDetector())
                         return FinishPhaseTwo(PhaseResult.Stopped);
@@ -647,6 +681,7 @@ public class UltraGramiel_LW
                     nukeCycle++;
                     nextAttack = 1;
                     LoneWolf.SetSkillEngineSkills(normalSkills);
+                    rotationRestricted = false;
 
                     if (!StartPhaseTwoAttackDetector())
                         return FinishPhaseTwo(PhaseResult.Stopped);
@@ -725,6 +760,30 @@ public class UltraGramiel_LW
         && armyComposition == ArmyComposition.Default
             ? new[] { 3, 4, 2, 1 }
             : preset.Skills;
+
+    private bool ShouldUsePhaseTwoSlowdown()
+    {
+        foreach (var item in Bot.Inventory.Items)
+        {
+            if (
+                item.Equipped
+                && !Core.NoneEnhancableFilter(item)
+            )
+                return Core.GetBoostFloat(item, "dmgAll") >= 1.40f;
+        }
+
+        return false;
+    }
+
+    private bool IsPhaseTwoSlowdownOwner() =>
+        IsOptimizedShaman()
+        || (
+            armyComposition == ArmyComposition.Default
+            && (
+                LoneWolf.IsArmyPlayer(1)
+                || LoneWolf.IsArmyPlayer(3)
+            )
+        );
 
     private int GetPhaseTwoTauntAttack()
     {
@@ -810,7 +869,7 @@ public class UltraGramiel_LW
             !LoneWolf.RequestTargetedPrioritySkill(
                 4,
                 GramielMapId,
-                CrystalAMapId
+                GramielMapId
             )
         )
             return;

@@ -1686,7 +1686,7 @@ public class CoreLoneWolf
 
         var elementalEmbrace = Bot.Target.GetAura(ShamanElementalEmbraceAura);
         if (
-            (elementalEmbrace == null || elementalEmbrace.RemainingTime <= 5)
+            (elementalEmbrace == null || elementalEmbrace.RemainingTime <= 30)
             && Bot.Skills.CanUseSkill(4)
             && Bot.Skills.UseSkill(4)
         )
@@ -1694,7 +1694,7 @@ public class CoreLoneWolf
 
         if (
             Volatile.Read(ref shamanSkillThreeEnabled)
-            && Bot.Player.Mana > 80
+            && Bot.Player.Mana > 70
             && Bot.Skills.CanUseSkill(3)
             && Bot.Skills.UseSkill(3)
         )
@@ -3900,20 +3900,46 @@ public class CoreLoneWolf
         )
             return false;
 
-        if (!SyncArmy("ULTRA_LEVEL_CHECK"))
+        bool hasRequiredWeapon = Bot.Inventory.Items.Any(item =>
+            !Core.NoneEnhancableFilter(item)
+            && Core.GetBoostFloat(item, "dmgAll") >= 1.30f
+        );
+
+        if (
+            !hasRequiredWeapon
+            && !SendArmySignal("ULTRA_WEAPON_INVALID")
+        )
+            return false;
+
+        if (!SyncArmy("ULTRA_ACCESS_CHECK"))
             return false;
 
         List<string> playersBelowLevel = new();
+        List<string> playersMissingWeapon = new();
         for (int playerNumber = 1; playerNumber <= armyPlayers.Length; playerNumber++)
         {
             if (HasArmySignal("ULTRA_LEVEL_INVALID", playerNumber))
                 playersBelowLevel.Add($"Player {playerNumber}");
+
+            if (HasArmySignal("ULTRA_WEAPON_INVALID", playerNumber))
+                playersMissingWeapon.Add($"Player {playerNumber}");
         }
 
         if (playersBelowLevel.Count > 0)
         {
             Core.Logger(
                 $"{ultraName} requires every player to be at least level {minimumLevel}. Players below the requirement: {string.Join(", ", playersBelowLevel)}.",
+                "ValidateUltraAccess",
+                messageBox: true,
+                stopBot: true
+            );
+            return false;
+        }
+
+        if (playersMissingWeapon.Count > 0)
+        {
+            Core.Logger(
+                $"{ultraName} requires every player to have a 30% damage boost weapon or greater in their inventory. Players missing the requirement: {string.Join(", ", playersMissingWeapon)}.",
                 "ValidateUltraAccess",
                 messageBox: true,
                 stopBot: true
