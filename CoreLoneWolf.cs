@@ -3112,7 +3112,8 @@ public class CoreLoneWolf
         EnhancementType type,
         CapeSpecial capeSpecial,
         HelmSpecial helmSpecial,
-        WeaponSpecial weaponSpecial
+        WeaponSpecial weaponSpecial,
+        bool warnForElysiumUnlock = false
     )
     {
         if (Bot.ShouldExit)
@@ -3227,7 +3228,8 @@ public class CoreLoneWolf
             PrepareEnhancementSlot(
                 EnhancementSlot.Weapon,
                 type,
-                weaponSpecial: weaponSpecial
+                weaponSpecial: weaponSpecial,
+                warnForElysiumUnlock: warnForElysiumUnlock
             );
     }
 
@@ -3236,7 +3238,8 @@ public class CoreLoneWolf
         EnhancementType type,
         CapeSpecial capeSpecial = CapeSpecial.None,
         HelmSpecial helmSpecial = HelmSpecial.None,
-        WeaponSpecial weaponSpecial = WeaponSpecial.None
+        WeaponSpecial weaponSpecial = WeaponSpecial.None,
+        bool warnForElysiumUnlock = false
     )
     {
         if (Bot.ShouldExit)
@@ -3391,6 +3394,38 @@ public class CoreLoneWolf
 
             if (!IsEnhancementUnlocked(slot, capeSpecial, helmSpecial, weaponSpecial))
             {
+                if (
+                    IsMandatoryEnhancementUnlock(
+                        slot,
+                        capeSpecial,
+                        helmSpecial,
+                        weaponSpecial
+                    )
+                )
+                {
+                    Core.Logger(
+                        $"{slot}: {requestedEnhancement} is not unlocked and is required.",
+                        "PrepareEnhancements",
+                        messageBox: true,
+                        stopBot: true
+                    );
+                    return;
+                }
+
+                if (
+                    warnForElysiumUnlock
+                    && slot == EnhancementSlot.Weapon
+                    && weaponSpecial == WeaponSpecial.Elysium
+                )
+                {
+                    Core.Logger(
+                        "Weapon: Elysium is not unlocked on Shaman. Ultra Gramiel may fail.",
+                        "PrepareEnhancements",
+                        messageBox: true
+                    );
+                    return;
+                }
+
                 LogEnhancementResult(
                     slot,
                     requestedEnhancement,
@@ -3440,6 +3475,29 @@ public class CoreLoneWolf
             LogEnhancementResult(slot, requestedEnhancement, "preparation failed");
         }
     }
+
+    private static bool IsMandatoryEnhancementUnlock(
+        EnhancementSlot slot,
+        CapeSpecial capeSpecial,
+        HelmSpecial helmSpecial,
+        WeaponSpecial weaponSpecial
+    ) =>
+        slot switch
+        {
+            EnhancementSlot.Cape =>
+                capeSpecial == CapeSpecial.Absolution
+                || capeSpecial == CapeSpecial.Lament
+                || capeSpecial == CapeSpecial.Penitence
+                || capeSpecial == CapeSpecial.Vainglory,
+            EnhancementSlot.Helm =>
+                helmSpecial == HelmSpecial.Examen
+                || helmSpecial == HelmSpecial.Forge
+                || helmSpecial == HelmSpecial.Pneuma,
+            EnhancementSlot.Weapon =>
+                weaponSpecial == WeaponSpecial.Awe_Blast
+                || weaponSpecial == WeaponSpecial.Health_Vamp,
+            _ => false,
+        };
 
     private bool TryGetEnhancementShop(
         EnhancementSlot slot,

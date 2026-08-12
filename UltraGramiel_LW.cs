@@ -278,7 +278,8 @@ public class UltraGramiel_LW
                 preset.BaseEnhancement,
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
-                preset.WeaponEnhancement
+                preset.WeaponEnhancement,
+                warnForElysiumUnlock: IsOptimizedShaman()
             );
 
         if (GetSetupOption<bool>("UsePotions"))
