@@ -152,7 +152,8 @@ public class UltraDrago_LW
                 PrerequisiteQuestId,
                 PrerequisiteQuestName,
                 MinimumLevel,
-                LogPrefix
+                LogPrefix,
+                GetClassPreset().ClassName
             )
         )
             return;

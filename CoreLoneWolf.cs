@@ -147,6 +147,7 @@ public class CoreLoneWolf
     private string packetSelectedChoice = string.Empty;
     private string packetSkillPauseChoice = string.Empty;
     private int packetDetectionCount;
+    private int bypassedUltraQuestID;
 
     private string[] armyPlayers = Array.Empty<string>();
     private string armyUsername = string.Empty;
@@ -486,6 +487,20 @@ public class CoreLoneWolf
             Tonic = "Fate Tonic",
             Elixir = "Potent Battle Elixir",
             CombatPotion = "Potent Honor Potion",
+        };
+
+    public ClassPreset Guardian() =>
+        new()
+        {
+            ClassName = "Guardian",
+            Skills = new[] { 1, 2, 1, 4 },
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Lament,
+            HelmEnhancement = HelmSpecial.Vim,
+            WeaponEnhancement = WeaponSpecial.Ravenous,
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
         };
 
     public void EquipClass(ClassPreset preset)
@@ -3490,7 +3505,8 @@ public class CoreLoneWolf
                 || capeSpecial == CapeSpecial.Penitence
                 || capeSpecial == CapeSpecial.Vainglory,
             EnhancementSlot.Helm =>
-                helmSpecial == HelmSpecial.Examen
+                helmSpecial == HelmSpecial.Vim
+                || helmSpecial == HelmSpecial.Examen
                 || helmSpecial == HelmSpecial.Forge
                 || helmSpecial == HelmSpecial.Pneuma,
             EnhancementSlot.Weapon =>
@@ -3908,6 +3924,15 @@ public class CoreLoneWolf
             return false;
         }
 
+        if (questID == bypassedUltraQuestID)
+        {
+            Core.Logger(
+                $"Ultra quest {questID} completion skipped because this account used the questline bypass.",
+                "CompleteUltraQuest"
+            );
+            return false;
+        }
+
         if (Bot.Quests.IsDailyComplete(questID))
         {
             Core.Logger(
@@ -3949,9 +3974,12 @@ public class CoreLoneWolf
         int prerequisiteQuestID,
         string prerequisiteQuestName,
         int minimumLevel,
-        string ultraName
+        string ultraName,
+        string className
     )
     {
+        bypassedUltraQuestID = 0;
+
         if (
             Bot.Player.Level < minimumLevel
             && !SendArmySignal("ULTRA_LEVEL_INVALID")
@@ -4014,11 +4042,12 @@ public class CoreLoneWolf
         )
         {
             Core.Logger(
-                $"{ultraName} requires {prerequisiteQuestName} to be completed. The questline will be updated so this account can continue.",
+                $"{ultraName} requires quest \"{prerequisiteQuestName}\" to be completed for Player {armyPlayerIndex + 1} ({className}). The quest will be bypassed so this account can continue.",
                 "ValidateUltraAccess",
                 messageBox: true
             );
             Bot.Quests.UpdateQuest(prerequisiteQuestID);
+            bypassedUltraQuestID = ultraQuestID;
         }
 
         return !Bot.ShouldExit;

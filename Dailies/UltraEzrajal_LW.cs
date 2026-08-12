@@ -160,7 +160,8 @@ public class UltraEzrajal_LW
                 PrerequisiteQuestId,
                 PrerequisiteQuestName,
                 MinimumLevel,
-                LogPrefix
+                LogPrefix,
+                GetClassPreset().ClassName
             )
         )
             return;

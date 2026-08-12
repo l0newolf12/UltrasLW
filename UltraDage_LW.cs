@@ -151,7 +151,8 @@ public class UltraDage_LW
                 PrerequisiteQuestId,
                 PrerequisiteQuestName,
                 MinimumLevel,
-                LogPrefix
+                LogPrefix,
+                GetClassPreset().ClassName
             )
         )
             return;

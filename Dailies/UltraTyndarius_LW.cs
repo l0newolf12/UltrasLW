@@ -150,7 +150,8 @@ public class UltraTyndarius_LW
                 PrerequisiteQuestId,
                 PrerequisiteQuestName,
                 MinimumLevel,
-                LogPrefix
+                LogPrefix,
+                GetClassPreset().ClassName
             )
         )
             return;
