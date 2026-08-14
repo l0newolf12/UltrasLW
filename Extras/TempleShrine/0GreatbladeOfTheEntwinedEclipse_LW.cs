@@ -159,6 +159,9 @@ public class GreatbladeOfTheEntwinedEclipse_LW
 
         int sunlightTarget = buybackMethod ? 155 : 215;
         int moonlightTarget = buybackMethod ? 155 : 215;
+        MidnightSun_LW midnightSun = new();
+        SolsticeMoon_LW solsticeMoon = new();
+        AscendEclipse_LW ascendEclipse = new();
 
         if (
             !FarmMaterial(
@@ -167,7 +170,9 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                 "SUNLIGHT_READY",
                 "SUNLIGHT",
                 DawnBreaksQuestId,
-                () => new MidnightSun_LW().RunFromMaster()
+                midnightSun.RunOnceFromMaster,
+                startDungeon: midnightSun.StartFromMaster,
+                stopDungeon: midnightSun.StopFromMaster
             )
             || !FarmMaterial(
                 Moonlight,
@@ -175,7 +180,9 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                 "MOONLIGHT_READY",
                 "MOONLIGHT",
                 NightFallsQuestId,
-                () => new SolsticeMoon_LW().RunFromMaster()
+                solsticeMoon.RunOnceFromMaster,
+                startDungeon: solsticeMoon.StartFromMaster,
+                stopDungeon: solsticeMoon.StopFromMaster
             )
             || !FarmMaterial(
                 EclipticOffering,
@@ -183,7 +190,9 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                 "ECLIPTIC_READY",
                 "ECLIPTIC",
                 FrozenCycleQuestId,
-                () => new AscendEclipse_LW().RunFromMaster()
+                ascendEclipse.RunOnceFromMaster,
+                startDungeon: ascendEclipse.StartFromMaster,
+                stopDungeon: ascendEclipse.StopFromMaster
             )
         )
             return;
@@ -324,52 +333,70 @@ public class GreatbladeOfTheEntwinedEclipse_LW
         string phaseName,
         int dailyQuestId,
         Func<bool> runDungeon,
-        bool localRequired = true
+        bool localRequired = true,
+        Func<bool>? startDungeon = null,
+        Action? stopDungeon = null
     )
     {
         bool readyReported = false;
+        bool startAttempted = false;
         int cycle = 0;
 
-        while (!Bot.ShouldExit)
+        try
         {
-            RefreshBank();
-
-            int quantity = TotalQuantity(itemName);
-            if ((!localRequired || quantity >= targetQuantity) && !readyReported)
+            while (!Bot.ShouldExit)
             {
-                if (!LoneWolf.SendArmySignal(readySignal))
+                RefreshBank();
+
+                int quantity = TotalQuantity(itemName);
+                if ((!localRequired || quantity >= targetQuantity) && !readyReported)
+                {
+                    if (!LoneWolf.SendArmySignal(readySignal))
+                        return false;
+
+                    readyReported = true;
+                    Core.Logger(
+                        $"{LogPrefix} {playerAlias} is ready with {quantity}/{targetQuantity} {itemName}."
+                    );
+                }
+
+                if (!Sync($"{phaseName}_{cycle}_STATUS"))
                     return false;
 
-                readyReported = true;
-                Core.Logger(
-                    $"{LogPrefix} {playerAlias} is ready with {quantity}/{targetQuantity} {itemName}."
-                );
+                if (AllPlayersSignaled(readySignal))
+                    return true;
+
+                if (!startAttempted && startDungeon != null)
+                {
+                    startAttempted = true;
+                    if (!startDungeon())
+                        return false;
+                }
+
+                TryAcceptDaily(dailyQuestId);
+                bool runSucceeded = runDungeon();
+                if (!runSucceeded)
+                    LoneWolf.SendArmySignal($"{phaseName}_FAILURE");
+
+                if (!Sync($"{phaseName}_{cycle}_RUN"))
+                    return false;
+
+                if (AnyPlayerSignaled($"{phaseName}_FAILURE"))
+                    return ArmyFailure(
+                        $"The {phaseName} dungeon run failed on at least one player."
+                    );
+
+                TryCompleteDaily(dailyQuestId);
+                cycle++;
             }
 
-            if (!Sync($"{phaseName}_{cycle}_STATUS"))
-                return false;
-
-            if (AllPlayersSignaled(readySignal))
-                return true;
-
-            TryAcceptDaily(dailyQuestId);
-            bool runSucceeded = runDungeon();
-            if (!runSucceeded)
-                LoneWolf.SendArmySignal($"{phaseName}_FAILURE");
-
-            if (!Sync($"{phaseName}_{cycle}_RUN"))
-                return false;
-
-            if (AnyPlayerSignaled($"{phaseName}_FAILURE"))
-                return ArmyFailure(
-                    $"The {phaseName} dungeon run failed on at least one player."
-                );
-
-            TryCompleteDaily(dailyQuestId);
-            cycle++;
+            return false;
         }
-
-        return false;
+        finally
+        {
+            if (startAttempted)
+                stopDungeon?.Invoke();
+        }
     }
 
     private bool MergeRite()

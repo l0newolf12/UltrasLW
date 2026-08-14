@@ -57,7 +57,10 @@ public class SolsticeMoon_LW
     private bool isTaunter;
     private int privateRoomNumber;
     private bool masterMode;
-    private bool runCompleted;
+    private bool masterStarted;
+    private ClassPreset? masterPreset;
+    private string[] masterPlayers = Array.Empty<string>();
+    private int masterRunNumber = 1;
 
     public string OptionsStorage = "SolsticeMoon_LW";
     public bool DontPreconfigure = true;
@@ -112,38 +115,87 @@ public class SolsticeMoon_LW
 
     public bool RunFromMaster()
     {
-        masterMode = true;
-        runCompleted = false;
-        Bot.Skills.Stop();
-        Bot.Options.InfiniteRange = true;
-
         try
         {
-            Run();
+            return StartFromMaster() && RunOnceFromMaster();
         }
         finally
         {
-            LoneWolf.StopPacketDetector();
-            LoneWolf.StopSkillEngine();
-            masterMode = false;
+            StopFromMaster();
         }
+    }
 
-        return runCompleted;
+    public bool StartFromMaster()
+    {
+        masterMode = true;
+        Bot.Skills.Stop();
+        Bot.Options.InfiniteRange = true;
+
+        if (!PrepareLifecycle(out ClassPreset preset, out string[] players))
+            return false;
+
+        masterPreset = preset;
+        masterPlayers = players;
+        masterRunNumber = 1;
+        masterStarted = true;
+        return true;
+    }
+
+    public bool RunOnceFromMaster()
+    {
+        if (!masterStarted || masterPreset == null)
+            return false;
+
+        if (!RunOnce(masterPreset, masterPlayers, masterRunNumber))
+            return false;
+
+        masterRunNumber++;
+        return true;
+    }
+
+    public void StopFromMaster()
+    {
+        LoneWolf.StopPacketDetector();
+        LoneWolf.StopSkillEngine();
+        masterPreset = null;
+        masterPlayers = Array.Empty<string>();
+        masterRunNumber = 1;
+        masterStarted = false;
+        masterMode = false;
     }
 
     private void Run()
     {
-        if (!ValidateOptions())
+        if (!PrepareLifecycle(out ClassPreset preset, out string[] players))
             return;
 
+        int runNumber = 1;
+
+        while (!Bot.ShouldExit)
+        {
+            if (!RunOnce(preset, players, runNumber))
+                return;
+
+            runNumber++;
+        }
+    }
+
+    private bool PrepareLifecycle(out ClassPreset preset, out string[] players)
+    {
+        preset = new ClassPreset();
+        players = Array.Empty<string>();
+
+        if (!ValidateOptions())
+            return false;
+
         if (!LoneWolf.StartArmySync(SyncFileName, 4, masterMode ? "Setup" : null))
-            return;
+            return false;
 
         playerAlias = GetPlayerAlias();
         isTaunter = LoneWolf.IsArmyPlayer(PrimaryTaunterArmyPlayer)
             || LoneWolf.IsArmyPlayer(4);
 
-        ClassPreset preset = GetClassPreset();
+        preset = GetClassPreset();
         if (isTaunter)
             preset.CombatPotion = null;
 
@@ -154,55 +206,49 @@ public class SolsticeMoon_LW
             || !PrepareBaseSetup(preset)
             || !Sync("SETUP_DONE")
         )
-            return;
+            return false;
 
-        string[] players = GetConfiguredPlayers();
-        int runNumber = 1;
+        players = GetConfiguredPlayers();
+        return true;
+    }
 
-        while (!Bot.ShouldExit)
-        {
-            Core.Logger($"{LogPrefix} {playerAlias} starting run {runNumber}.");
+    private bool RunOnce(ClassPreset preset, string[] players, int runNumber)
+    {
+        Core.Logger($"{LogPrefix} {playerAlias} starting run {runNumber}.");
 
-            LoneWolf.EquipClass(preset);
-            if (Bot.ShouldExit)
-                return;
+        LoneWolf.EquipClass(preset);
+        if (Bot.ShouldExit)
+            return false;
 
-            if (
-                !PrepareRunConsumables(preset)
-                || !Temple.PrepareParty(players)
-                || !Temple.EnterDungeon(MapName, privateRoomNumber)
-                || !PrepareDungeonEntry(preset)
-                || !RunEnterRoom(preset, runNumber)
-                || !RunRoomOne(preset, runNumber)
-                || !RunRoomTwo(preset, runNumber)
-                || !RunFinalRoom(preset, runNumber)
-            )
-                return;
+        if (
+            !PrepareRunConsumables(preset)
+            || !Temple.PrepareParty(players)
+            || !Temple.EnterDungeon(MapName, privateRoomNumber)
+            || !PrepareDungeonEntry(preset)
+            || !RunEnterRoom(preset, runNumber)
+            || !RunRoomOne(preset, runNumber)
+            || !RunRoomTwo(preset, runNumber)
+            || !RunFinalRoom(preset, runNumber)
+        )
+            return false;
 
-            if (!Sync($"RUN_{runNumber}_COMPLETE"))
-                return;
+        if (!Sync($"RUN_{runNumber}_COMPLETE"))
+            return false;
 
-            Core.Logger($"{LogPrefix} {playerAlias} completed run {runNumber}.");
+        Core.Logger($"{LogPrefix} {playerAlias} completed run {runNumber}.");
 
-            LoneWolf.StopPacketDetector();
-            LoneWolf.StopSkillEngine();
-            Bot.Combat.CancelTarget();
+        LoneWolf.StopPacketDetector();
+        LoneWolf.StopSkillEngine();
+        Bot.Combat.CancelTarget();
 
-            Bot.Sleep(2_000);
-            if (Bot.ShouldExit)
-                return;
+        Bot.Sleep(2_000);
+        if (Bot.ShouldExit)
+            return false;
 
-            if (!Temple.ReturnHome())
-                return;
+        if (!Temple.ReturnHome())
+            return false;
 
-            if (masterMode)
-            {
-                runCompleted = true;
-                return;
-            }
-
-            runNumber++;
-        }
+        return true;
     }
 
     private bool ValidateOptions()

@@ -72,7 +72,10 @@ public class AscendEclipse_LW
     private ArmyComposition armyComposition;
     private int privateRoomNumber;
     private bool masterMode;
-    private bool runCompleted;
+    private bool masterStarted;
+    private ClassPreset? masterPreset;
+    private string[] masterPlayers = Array.Empty<string>();
+    private int masterRunNumber = 1;
 
     public string OptionsStorage = "AscendEclipse_LW";
     public bool DontPreconfigure = true;
@@ -127,36 +130,85 @@ public class AscendEclipse_LW
 
     public bool RunFromMaster()
     {
-        masterMode = true;
-        runCompleted = false;
-        Bot.Skills.Stop();
-        Bot.Options.InfiniteRange = true;
-
         try
         {
-            Run();
+            return StartFromMaster() && RunOnceFromMaster();
         }
         finally
         {
-            LoneWolf.StopPacketDetector();
-            LoneWolf.StopSkillEngine();
-            masterMode = false;
+            StopFromMaster();
         }
+    }
 
-        return runCompleted;
+    public bool StartFromMaster()
+    {
+        masterMode = true;
+        Bot.Skills.Stop();
+        Bot.Options.InfiniteRange = true;
+
+        if (!PrepareLifecycle(out ClassPreset preset, out string[] players))
+            return false;
+
+        masterPreset = preset;
+        masterPlayers = players;
+        masterRunNumber = 1;
+        masterStarted = true;
+        return true;
+    }
+
+    public bool RunOnceFromMaster()
+    {
+        if (!masterStarted || masterPreset == null)
+            return false;
+
+        if (!RunOnce(masterPreset, masterPlayers, masterRunNumber))
+            return false;
+
+        masterRunNumber++;
+        return true;
+    }
+
+    public void StopFromMaster()
+    {
+        LoneWolf.StopPacketDetector();
+        LoneWolf.StopSkillEngine();
+        masterPreset = null;
+        masterPlayers = Array.Empty<string>();
+        masterRunNumber = 1;
+        masterStarted = false;
+        masterMode = false;
     }
 
     private void Run()
     {
-        if (!ValidateOptions())
+        if (!PrepareLifecycle(out ClassPreset preset, out string[] players))
             return;
 
+        int runNumber = 1;
+
+        while (!Bot.ShouldExit)
+        {
+            if (!RunOnce(preset, players, runNumber))
+                return;
+
+            runNumber++;
+        }
+    }
+
+    private bool PrepareLifecycle(out ClassPreset preset, out string[] players)
+    {
+        preset = new ClassPreset();
+        players = Array.Empty<string>();
+
+        if (!ValidateOptions())
+            return false;
+
         if (!LoneWolf.StartArmySync(SyncFileName, 4, masterMode ? "Setup" : null))
-            return;
+            return false;
 
         playerAlias = GetPlayerAlias();
 
-        ClassPreset preset = GetClassPreset();
+        preset = GetClassPreset();
         preset.CapeEnhancement = LoneWolf.IsArmyPlayer(2)
             ? CapeSpecial.Absolution
             : CapeSpecial.Penitence;
@@ -171,56 +223,53 @@ public class AscendEclipse_LW
             || !PrepareBaseSetup(preset)
             || !Sync("SETUP_DONE")
         )
-            return;
+            return false;
 
-        string[] players = GetConfiguredPlayers();
-        int runNumber = 1;
+        if (masterMode && !EnsureRiteOfAscension())
+            return false;
 
-        while (!Bot.ShouldExit)
-        {
-            Core.Logger($"{LogPrefix} {playerAlias} starting run {runNumber}.");
+        players = GetConfiguredPlayers();
+        return true;
+    }
 
-            LoneWolf.EquipClass(preset);
-            if (Bot.ShouldExit)
-                return;
+    private bool RunOnce(ClassPreset preset, string[] players, int runNumber)
+    {
+        Core.Logger($"{LogPrefix} {playerAlias} starting run {runNumber}.");
 
-            if (
-                !EnsureRiteOfAscension()
-                || !PrepareRunConsumables(preset)
-                || !Temple.PrepareParty(players)
-                || !Temple.EnterDungeon(MapName, privateRoomNumber)
-                || !PrepareDungeonEntry(preset)
-                || !RunEnterRoom(preset, runNumber)
-                || !RunRoomOne(preset, runNumber)
-                || !RunRoomTwo(preset, runNumber)
-                || !RunFinalRoom(preset, runNumber)
-            )
-                return;
+        LoneWolf.EquipClass(preset);
+        if (Bot.ShouldExit)
+            return false;
 
-            if (!Sync($"RUN_{runNumber}_COMPLETE"))
-                return;
+        if (
+            (!masterMode && !EnsureRiteOfAscension())
+            || !PrepareRunConsumables(preset)
+            || !Temple.PrepareParty(players)
+            || !Temple.EnterDungeon(MapName, privateRoomNumber)
+            || !PrepareDungeonEntry(preset)
+            || !RunEnterRoom(preset, runNumber)
+            || !RunRoomOne(preset, runNumber)
+            || !RunRoomTwo(preset, runNumber)
+            || !RunFinalRoom(preset, runNumber)
+        )
+            return false;
 
-            Core.Logger($"{LogPrefix} {playerAlias} completed run {runNumber}.");
+        if (!Sync($"RUN_{runNumber}_COMPLETE"))
+            return false;
 
-            LoneWolf.StopPacketDetector();
-            LoneWolf.StopSkillEngine();
-            Bot.Combat.CancelTarget();
+        Core.Logger($"{LogPrefix} {playerAlias} completed run {runNumber}.");
 
-            Bot.Sleep(2_000);
-            if (Bot.ShouldExit)
-                return;
+        LoneWolf.StopPacketDetector();
+        LoneWolf.StopSkillEngine();
+        Bot.Combat.CancelTarget();
 
-            if (!Temple.ReturnHome())
-                return;
+        Bot.Sleep(2_000);
+        if (Bot.ShouldExit)
+            return false;
 
-            if (masterMode)
-            {
-                runCompleted = true;
-                return;
-            }
+        if (!Temple.ReturnHome())
+            return false;
 
-            runNumber++;
-        }
+        return true;
     }
 
     private bool ValidateOptions()
