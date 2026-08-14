@@ -6,7 +6,7 @@ tags: ultra, champion drakath, weekly, army, corelonewolf
 
 //cs_include Scripts/CoreBots.cs
 //cs_include Scripts/CoreAdvanced.cs
-//cs_include Scripts/Prototypes/ultras/CoreLoneWolf.cs
+//cs_include Scripts/UltrasLW/CoreLoneWolf.cs
 using System;
 using System.Collections.Generic;
 using Skua.Core.Interfaces;
