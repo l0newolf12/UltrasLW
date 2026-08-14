@@ -6,7 +6,7 @@ tags: ultra, tyndarius, army, corelonewolf
 
 //cs_include Scripts/CoreBots.cs
 //cs_include Scripts/CoreAdvanced.cs
-//cs_include Scripts/UltrasLW/CoreLoneWolf.cs
+//cs_include Scripts/Prototypes/ultras/CoreLoneWolf.cs
 using System;
 using System.Collections.Generic;
 using Skua.Core.Interfaces;
@@ -20,6 +20,7 @@ public class UltraTyndarius_LW
     {
         Default,
         Stable,
+        Reliable,
         Fast,
     }
 
@@ -77,7 +78,7 @@ public class UltraTyndarius_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nFast: AI / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -158,7 +159,7 @@ public class UltraTyndarius_LW
 
         playerAlias = GetPlayerAlias();
         ClassPreset preset = GetClassPreset();
-        isTaunter = armyComposition == ArmyComposition.Default
+        isTaunter = UsesDefaultFightRoles()
             || LoneWolf.IsArmyPlayer(3)
             || LoneWolf.IsArmyPlayer(4);
 
@@ -255,7 +256,8 @@ public class UltraTyndarius_LW
                 preset.BaseEnhancement,
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
-                preset.WeaponEnhancement
+                preset.WeaponEnhancement,
+                weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
         if (GetSetupOption<bool>("UsePotions"))
@@ -400,7 +402,7 @@ public class UltraTyndarius_LW
                 partnerPlayerNumber: 3
             );
 
-        if (armyComposition != ArmyComposition.Default)
+        if (!UsesDefaultFightRoles())
             return FightDamageDealer(preset, fightAttempt);
 
         int tauntMapId = LoneWolf.IsArmyPlayer(1)
@@ -648,7 +650,7 @@ public class UltraTyndarius_LW
             isTaunter,
             LogPrefix,
             preset.SkillMode,
-            maintainedPotion: armyComposition != ArmyComposition.Default
+            maintainedPotion: !UsesDefaultFightRoles()
                 && !isTaunter
                 && GetSetupOption<bool>("UsePotions")
                     ? preset.CombatPotion
@@ -836,6 +838,7 @@ public class UltraTyndarius_LW
             return armyComposition switch
             {
                 ArmyComposition.Stable => LoneWolf.KingsEcho(),
+                ArmyComposition.Reliable => LoneWolf.VerusDoomKnight(),
                 ArmyComposition.Fast => LoneWolf.ArcanaInvoker(),
                 _ => LoneWolf.LegionRevenant(),
             };
@@ -848,6 +851,10 @@ public class UltraTyndarius_LW
 
         return LoneWolf.LordOfOrder();
     }
+
+    private bool UsesDefaultFightRoles() =>
+        armyComposition == ArmyComposition.Default
+        || armyComposition == ArmyComposition.Reliable;
 
     private string GetPlayerAlias()
     {

@@ -6,7 +6,7 @@ tags: ultra, dage, army, corelonewolf
 
 //cs_include Scripts/CoreBots.cs
 //cs_include Scripts/CoreAdvanced.cs
-//cs_include Scripts/UltrasLW/CoreLoneWolf.cs
+//cs_include Scripts/Prototypes/ultras/CoreLoneWolf.cs
 using System;
 using System.Collections.Generic;
 using Skua.Core.Interfaces;
@@ -20,6 +20,7 @@ public class UltraDage_LW
     {
         Default,
         Stable,
+        Reliable,
     }
 
     private enum FightResult
@@ -45,6 +46,7 @@ public class UltraDage_LW
     private const string DecayScroll = "Scroll of Decay";
     private const string MystifyScroll = "Scroll of Mystify";
     private const string NoxiousDecayAura = "Noxious Decay";
+    private const string UnleashedDoomAura = "Unleashed Doom";
     private const string FocusAura = "Focus";
     private const string DecayMessage =
         "I possess the full power of the Legion at my disposal.";
@@ -78,7 +80,7 @@ public class UltraDage_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -257,7 +259,8 @@ public class UltraDage_LW
                 preset.BaseEnhancement,
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
-                preset.WeaponEnhancement
+                preset.WeaponEnhancement,
+                weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
         bool stableKingsEcho = armyComposition == ArmyComposition.Stable
@@ -293,8 +296,37 @@ public class UltraDage_LW
         if (Bot.ShouldExit)
             return false;
 
+        WarnIfHealthVampWeaponIsMissing();
         Core.Logger($"{LogPrefix} {playerAlias} finished setup.");
         return true;
+    }
+
+    private void WarnIfHealthVampWeaponIsMissing()
+    {
+        foreach (var item in Bot.Inventory.Items)
+        {
+            if (
+                !item.Equipped
+                || !string.Equals(
+                    item.CategoryString,
+                    "Weapon",
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+                continue;
+
+            if (
+                item.EnhancementPatternID
+                != (int)WeaponSpecial.Health_Vamp
+            )
+                Core.Logger(
+                    "Health Vamp is not enhanced on the weapon. Ultra Dage will fail.",
+                    "Prepare",
+                    messageBox: true
+                );
+
+            return;
+        }
     }
 
     private bool PrepareSafeRoom(
@@ -788,6 +820,9 @@ public class UltraDage_LW
     {
         bool stableKingsEcho = armyComposition == ArmyComposition.Stable
             && LoneWolf.IsArmyPlayer(1);
+        bool reliableVerusDoomKnight =
+            armyComposition == ArmyComposition.Reliable
+            && LoneWolf.IsArmyPlayer(1);
 
         LoneWolf.StartSkillEngine(
             preset.Skills,
@@ -799,7 +834,11 @@ public class UltraDage_LW
             maintainedPotion: stableKingsEcho
                 && GetSetupOption<bool>("UsePotions")
                     ? preset.CombatPotion
-                    : null
+                    : null,
+            blockedStrictSkill: reliableVerusDoomKnight ? 2 : 0,
+            blockedStrictSkillSelfAura: reliableVerusDoomKnight
+                ? UnleashedDoomAura
+                : string.Empty
         );
     }
 
@@ -1000,6 +1039,8 @@ public class UltraDage_LW
         {
             if (armyComposition == ArmyComposition.Stable)
                 preset = LoneWolf.KingsEcho();
+            else if (armyComposition == ArmyComposition.Reliable)
+                preset = LoneWolf.VerusDoomKnight();
             else
             {
                 preset = LoneWolf.LegionRevenant();
@@ -1023,6 +1064,7 @@ public class UltraDage_LW
         }
 
         preset.WeaponEnhancement = WeaponSpecial.Health_Vamp;
+        preset.WeaponEnhancementFallbacks = Array.Empty<WeaponSpecial>();
         preset.CapeEnhancement = CapeSpecial.Vainglory;
 
         if (

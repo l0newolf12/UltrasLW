@@ -6,7 +6,7 @@ tags: ultra, warden, army, corelonewolf
 
 //cs_include Scripts/CoreBots.cs
 //cs_include Scripts/CoreAdvanced.cs
-//cs_include Scripts/UltrasLW/CoreLoneWolf.cs
+//cs_include Scripts/Prototypes/ultras/CoreLoneWolf.cs
 using System.Collections.Generic;
 using Skua.Core.Interfaces;
 using Skua.Core.Options;
@@ -19,6 +19,7 @@ public class UltraWarden_LW
     {
         Default,
         Stable,
+        Reliable,
     }
 
     private enum FightResult
@@ -68,7 +69,7 @@ public class UltraWarden_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -148,9 +149,9 @@ public class UltraWarden_LW
             return;
 
         playerAlias = GetPlayerAlias();
-        int taunterPlayer = armyComposition == ArmyComposition.Default
-            ? 1
-            : 2;
+        int taunterPlayer = armyComposition == ArmyComposition.Stable
+            ? 2
+            : 1;
         isTaunter = LoneWolf.IsArmyPlayer(taunterPlayer);
 
         ClassPreset preset = GetClassPreset();
@@ -237,7 +238,8 @@ public class UltraWarden_LW
                 preset.BaseEnhancement,
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
-                preset.WeaponEnhancement
+                preset.WeaponEnhancement,
+                weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
         if (GetSetupOption<bool>("UsePotions"))
@@ -433,9 +435,12 @@ public class UltraWarden_LW
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1))
-            return armyComposition == ArmyComposition.Stable
-                ? LoneWolf.KingsEcho()
-                : LoneWolf.LegionRevenant();
+            return armyComposition switch
+            {
+                ArmyComposition.Stable => LoneWolf.KingsEcho(),
+                ArmyComposition.Reliable => LoneWolf.VerusDoomKnight(),
+                _ => LoneWolf.LegionRevenant(),
+            };
 
         if (LoneWolf.IsArmyPlayer(2))
             return LoneWolf.StoneCrusher();

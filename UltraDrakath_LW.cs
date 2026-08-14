@@ -6,7 +6,7 @@ tags: ultra, champion drakath, weekly, army, corelonewolf
 
 //cs_include Scripts/CoreBots.cs
 //cs_include Scripts/CoreAdvanced.cs
-//cs_include Scripts/UltrasLW/CoreLoneWolf.cs
+//cs_include Scripts/Prototypes/ultras/CoreLoneWolf.cs
 using System;
 using System.Collections.Generic;
 using Skua.Core.Interfaces;
@@ -20,6 +20,7 @@ public class UltraDrakath_LW
     {
         Default,
         Stable,
+        Reliable,
         Optimized,
     }
 
@@ -99,7 +100,7 @@ public class UltraDrakath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: CS / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -185,7 +186,10 @@ public class UltraDrakath_LW
         if (
             LoneWolf.IsArmyPlayer(3)
             || (
-                armyComposition == ArmyComposition.Default
+                (
+                    armyComposition == ArmyComposition.Default
+                    || armyComposition == ArmyComposition.Reliable
+                )
                 && LoneWolf.IsArmyPlayer(1)
             )
         )
@@ -276,7 +280,8 @@ public class UltraDrakath_LW
                 preset.BaseEnhancement,
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
-                preset.WeaponEnhancement
+                preset.WeaponEnhancement,
+                weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
         if (GetSetupOption<bool>("UsePotions"))
@@ -500,6 +505,7 @@ public class UltraDrakath_LW
             return armyComposition switch
             {
                 ArmyComposition.Stable => LoneWolf.KingsEcho(),
+                ArmyComposition.Reliable => LoneWolf.VerusDoomKnight(),
                 ArmyComposition.Optimized => LoneWolf.ChaosSlayer(),
                 _ => LoneWolf.LegionRevenant(),
             };

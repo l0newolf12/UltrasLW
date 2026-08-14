@@ -6,7 +6,7 @@ tags: ultra, gramiel, weekly, army, corelonewolf
 
 //cs_include Scripts/CoreBots.cs
 //cs_include Scripts/CoreAdvanced.cs
-//cs_include Scripts/UltrasLW/CoreLoneWolf.cs
+//cs_include Scripts/Prototypes/ultras/CoreLoneWolf.cs
 using System;
 using System.Collections.Generic;
 using Skua.Core.Interfaces;
@@ -280,7 +280,8 @@ public class UltraGramiel_LW
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
                 preset.WeaponEnhancement,
-                warnForElysiumUnlock: IsOptimizedShaman()
+                warnForElysiumUnlock: IsOptimizedShaman(),
+                weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
         if (GetSetupOption<bool>("UsePotions"))

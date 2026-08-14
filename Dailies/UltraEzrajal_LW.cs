@@ -6,7 +6,7 @@ tags: ultra, ezrajal, army, corelonewolf
 
 //cs_include Scripts/CoreBots.cs
 //cs_include Scripts/CoreAdvanced.cs
-//cs_include Scripts/UltrasLW/CoreLoneWolf.cs
+//cs_include Scripts/Prototypes/ultras/CoreLoneWolf.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,6 +22,7 @@ public class UltraEzrajal_LW
     {
         Default,
         Stable,
+        Reliable,
     }
 
     private enum FightResult
@@ -77,7 +78,7 @@ public class UltraEzrajal_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -255,7 +256,8 @@ public class UltraEzrajal_LW
                 preset.BaseEnhancement,
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
-                preset.WeaponEnhancement
+                preset.WeaponEnhancement,
+                weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
         if (GetSetupOption<bool>("UsePotions"))
@@ -743,6 +745,9 @@ public class UltraEzrajal_LW
                 preset.CapeEnhancement = CapeSpecial.None;
                 return preset;
             }
+
+            if (armyComposition == ArmyComposition.Reliable)
+                return LoneWolf.VerusDoomKnight();
 
             return LoneWolf.LegionRevenant();
         }

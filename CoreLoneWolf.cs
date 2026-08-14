@@ -114,6 +114,7 @@ public class CoreLoneWolf
     private Thread? skillThread;
     private volatile bool skillEngineRunning;
     private int skillEnginePaused;
+    private int ordinarySkillsSuppressed;
     private int pendingAbsolutePriorityTauntMapId;
     private int pendingTauntMapId;
     private int pendingImmediateTauntMapId;
@@ -132,6 +133,10 @@ public class CoreLoneWolf
     private bool useSurvivalSkill = true;
     private string? maintainedPotion;
     private int kingsEchoManaThreshold = 12;
+    private int blockedStrictSkill;
+    private string blockedStrictSkillSelfAura = string.Empty;
+    private int blockedSimpleSkill;
+    private string blockedSimpleSkillTargetAura = string.Empty;
     private bool shamanSkillThreeEnabled = true;
     private bool cssNormalInitialManaCheck;
     private bool cssNormalNeedsRegeneration;
@@ -143,9 +148,11 @@ public class CoreLoneWolf
     private string[] packetCommands = Array.Empty<string>();
     private string packetSelectedCommand = string.Empty;
     private string[] packetTexts = Array.Empty<string>();
+    private string packetSelectedPacket = string.Empty;
     private bool packetChoiceMode;
     private string packetSelectedChoice = string.Empty;
     private string packetSkillPauseChoice = string.Empty;
+    private bool packetPauseEveryChoice;
     private int packetDetectionCount;
     private int bypassedUltraQuestID;
 
@@ -229,6 +236,12 @@ public class CoreLoneWolf
             CapeEnhancement = CapeSpecial.Vainglory,
             HelmEnhancement = HelmSpecial.Forge,
             WeaponEnhancement = WeaponSpecial.Arcanas_Concerto,
+            WeaponEnhancementFallbacks = new[]
+            {
+                WeaponSpecial.Ravenous,
+                WeaponSpecial.Valiance,
+                WeaponSpecial.Health_Vamp,
+            },
             Tonic = "Sage Tonic",
             Elixir = "Potent Malevolence Elixir",
             CombatPotion = "Potent Honor Potion",
@@ -360,6 +373,12 @@ public class CoreLoneWolf
             CapeEnhancement = CapeSpecial.Vainglory,
             HelmEnhancement = HelmSpecial.Examen,
             WeaponEnhancement = WeaponSpecial.Ravenous,
+            WeaponEnhancementFallbacks = new[]
+            {
+                WeaponSpecial.Elysium,
+                WeaponSpecial.Valiance,
+                WeaponSpecial.Health_Vamp,
+            },
             Tonic = "Fate Tonic",
             Elixir = "Potent Battle Elixir",
             CombatPotion = "Felicitous Philtre",
@@ -427,6 +446,12 @@ public class CoreLoneWolf
             CapeEnhancement = CapeSpecial.Vainglory,
             HelmEnhancement = HelmSpecial.Forge,
             WeaponEnhancement = WeaponSpecial.Ravenous,
+            WeaponEnhancementFallbacks = new[]
+            {
+                WeaponSpecial.Elysium,
+                WeaponSpecial.Valiance,
+                WeaponSpecial.Health_Vamp,
+            },
             Tonic = "Fate Tonic",
             Elixir = "Potent Malevolence Elixir",
             CombatPotion = "Felicitous Philtre",
@@ -667,7 +692,11 @@ public class CoreLoneWolf
         SkillEngineMode mode = SkillEngineMode.Simple,
         bool useSurvivalSkill = true,
         string? maintainedPotion = null,
-        int kingsEchoManaThreshold = 12
+        int kingsEchoManaThreshold = 12,
+        int blockedStrictSkill = 0,
+        string blockedStrictSkillSelfAura = "",
+        int blockedSimpleSkill = 0,
+        string blockedSimpleSkillTargetAura = ""
     )
     {
         if (skillEngineRunning)
@@ -681,12 +710,17 @@ public class CoreLoneWolf
         this.useSurvivalSkill = useSurvivalSkill;
         this.maintainedPotion = maintainedPotion;
         this.kingsEchoManaThreshold = kingsEchoManaThreshold;
+        this.blockedStrictSkill = blockedStrictSkill;
+        this.blockedStrictSkillSelfAura = blockedStrictSkillSelfAura;
+        this.blockedSimpleSkill = blockedSimpleSkill;
+        this.blockedSimpleSkillTargetAura = blockedSimpleSkillTargetAura;
         skillIndex = 0;
         if (mode == SkillEngineMode.ChronoShadowHunterStable)
             ResetCSSNormalMode();
         if (mode == SkillEngineMode.ChronoShadowHunterGunslinger)
             ResetCSSGunslingerMode();
         skillEnginePaused = 0;
+        ordinarySkillsSuppressed = 0;
         pendingAbsolutePriorityTauntMapId = 0;
         pendingTauntMapId = 0;
         pendingImmediateTauntMapId = 0;
@@ -721,6 +755,7 @@ public class CoreLoneWolf
 
         skillThread = null;
         skillEnginePaused = 0;
+        ordinarySkillsSuppressed = 0;
         pendingAbsolutePriorityTauntMapId = 0;
         pendingTauntMapId = 0;
         pendingImmediateTauntMapId = 0;
@@ -732,6 +767,10 @@ public class CoreLoneWolf
         pendingLimitedPrioritySkill = null;
         shamanSkillThreeEnabled = true;
         maintainedPotion = null;
+        blockedStrictSkill = 0;
+        blockedStrictSkillSelfAura = string.Empty;
+        blockedSimpleSkill = 0;
+        blockedSimpleSkillTargetAura = string.Empty;
     }
 
     public void SetSkillEngineSkills(int[] skills)
@@ -758,19 +797,22 @@ public class CoreLoneWolf
     public bool StartPacketChoiceDetector(
         string command,
         string[] choices,
-        string pauseSkillChoice = ""
+        string pauseSkillChoice = "",
+        bool pauseEveryChoice = false
     ) => StartPacketDetector(
         new[] { command },
         choices,
         choiceMode: true,
-        pauseSkillChoice: pauseSkillChoice
+        pauseSkillChoice: pauseSkillChoice,
+        pauseEveryChoice: pauseEveryChoice
     );
 
     private bool StartPacketDetector(
         string[] commands,
         string[] texts,
         bool choiceMode,
-        string pauseSkillChoice = ""
+        string pauseSkillChoice = "",
+        bool pauseEveryChoice = false
     )
     {
         StopPacketDetector();
@@ -798,12 +840,14 @@ public class CoreLoneWolf
         packetCommands = validCommands;
         packetSelectedCommand = string.Empty;
         packetTexts = validTexts;
+        Volatile.Write(ref packetSelectedPacket, string.Empty);
         packetChoiceMode = choiceMode;
         packetSelectedChoice = string.Empty;
         packetSkillPauseChoice = choiceMode
             && validTexts.Contains(pauseSkillChoice, StringComparer.Ordinal)
                 ? pauseSkillChoice
                 : string.Empty;
+        packetPauseEveryChoice = choiceMode && pauseEveryChoice;
         Interlocked.Exchange(ref packetDetectionCount, 0);
         packetDetectorRunning = true;
 
@@ -821,6 +865,9 @@ public class CoreLoneWolf
     public string GetPacketDetectorCommand() =>
         Volatile.Read(ref packetSelectedCommand);
 
+    public string GetPacketDetectorPacket() =>
+        Volatile.Read(ref packetSelectedPacket);
+
     public string GetPacketDetectorChoice() =>
         packetChoiceMode
             ? Volatile.Read(ref packetSelectedChoice)
@@ -834,15 +881,20 @@ public class CoreLoneWolf
         packetCommands = Array.Empty<string>();
         packetSelectedCommand = string.Empty;
         packetTexts = Array.Empty<string>();
+        Volatile.Write(ref packetSelectedPacket, string.Empty);
         packetChoiceMode = false;
         packetSelectedChoice = string.Empty;
         packetSkillPauseChoice = string.Empty;
+        packetPauseEveryChoice = false;
         Volatile.Write(ref skillEnginePaused, 0);
         Interlocked.Exchange(ref packetDetectionCount, 0);
     }
 
     public void ResumeSkillEngine() =>
         Volatile.Write(ref skillEnginePaused, 0);
+
+    public void SetOrdinarySkillsSuppressed(bool suppressed) =>
+        Volatile.Write(ref ordinarySkillsSuppressed, suppressed ? 1 : 0);
 
     public void RequestTaunt(int mapId)
     {
@@ -855,6 +907,9 @@ public class CoreLoneWolf
         if (mapId > 0)
             Volatile.Write(ref pendingAbsolutePriorityTauntMapId, mapId);
     }
+
+    public bool HasPendingAbsolutePriorityTaunt() =>
+        Volatile.Read(ref pendingAbsolutePriorityTauntMapId) > 0;
 
     public bool RequestImmediateTaunt(int mapId)
     {
@@ -905,6 +960,9 @@ public class CoreLoneWolf
             new LimitedPrioritySkillRequest(skill, uses)
         );
     }
+
+    public bool HasPendingLimitedPrioritySkill() =>
+        Volatile.Read(ref pendingLimitedPrioritySkill) != null;
 
     public bool RequestTargetedPrioritySkill(
         int skill,
@@ -1035,16 +1093,20 @@ public class CoreLoneWolf
 
         if (choiceMode)
         {
-            if (string.Equals(
-                selectedChoice,
-                Volatile.Read(ref packetSkillPauseChoice),
-                StringComparison.Ordinal
-            ))
+            if (
+                packetPauseEveryChoice
+                || string.Equals(
+                    selectedChoice,
+                    Volatile.Read(ref packetSkillPauseChoice),
+                    StringComparison.Ordinal
+                )
+            )
                 Volatile.Write(ref skillEnginePaused, 1);
 
             Volatile.Write(ref packetSelectedChoice, selectedChoice);
         }
 
+        Volatile.Write(ref packetSelectedPacket, packet);
         Interlocked.Increment(ref packetDetectionCount);
     }
 
@@ -1154,6 +1216,12 @@ public class CoreLoneWolf
                     );
                     bool immediateTauntUsed = immediateTauntMapId > 0
                         && ImmediateTaunt(immediateTauntMapId);
+
+                    if (Volatile.Read(ref ordinarySkillsSuppressed) > 0)
+                    {
+                        Bot.Sleep(SkillPollDelay);
+                        continue;
+                    }
 
                     int skillFiveMapId = immediateTauntUsed
                         ? 0
@@ -1288,6 +1356,14 @@ public class CoreLoneWolf
                             skillEngineMode == SkillEngineMode.VoidHighlord
                         )
                             VoidHighlordSkillEngine();
+                        else if (
+                            skillEngineMode == SkillEngineMode.Simple
+                            && blockedSimpleSkill is >= 1 and <= 4
+                            && !string.IsNullOrWhiteSpace(
+                                blockedSimpleSkillTargetAura
+                            )
+                        )
+                            AuraBlockedSimpleSkillEngine();
                         else
                             CustomSkillEngine();
                     }
@@ -1304,6 +1380,7 @@ public class CoreLoneWolf
         {
             skillEngineRunning = false;
             skillEnginePaused = 0;
+            ordinarySkillsSuppressed = 0;
             pendingAbsolutePriorityTauntMapId = 0;
             pendingTauntMapId = 0;
             pendingImmediateTauntMapId = 0;
@@ -1530,6 +1607,38 @@ public class CoreLoneWolf
         }
     }
 
+    private void AuraBlockedSimpleSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+            return;
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        int[] skills = GetSkillList();
+
+        if (skills.Length == 0)
+            return;
+
+        bool blockSkill = Bot.Target.GetAura(blockedSimpleSkillTargetAura) != null;
+
+        for (int offset = 0; offset < skills.Length; offset++)
+        {
+            int index = (skillIndex + offset) % skills.Length;
+            int skill = skills[index];
+
+            if (blockSkill && skill == blockedSimpleSkill)
+                continue;
+
+            if (!Bot.Skills.CanUseSkill(skill))
+                continue;
+
+            Bot.Skills.UseSkill(skill);
+            skillIndex = (index + 1) % skills.Length;
+            return;
+        }
+    }
+
     private void LightCasterHealingSkillEngine()
     {
         if (Bot.Skills.CanUseSkill(3))
@@ -1598,6 +1707,16 @@ public class CoreLoneWolf
             return;
 
         int skill = skills[index];
+
+        if (
+            skill == blockedStrictSkill
+            && !string.IsNullOrWhiteSpace(blockedStrictSkillSelfAura)
+            && Bot.Self.HasActiveAura(blockedStrictSkillSelfAura)
+        )
+        {
+            index = (index + 1) % skills.Length;
+            return;
+        }
 
         if (!Bot.Skills.CanUseSkill(skill))
             return;
@@ -2478,6 +2597,15 @@ public class CoreLoneWolf
                 return;
             }
 
+            if (!Bot.Bank.Loaded)
+            {
+                if (Bot.Flash.GetGameObject("ui.mcPopup.currentLabel") != "\"Bank\"")
+                    Bot.Bank.Open();
+
+                Bot.Bank.Load(waitForLoad: false);
+                Bot.Wait.ForBankLoad(20);
+            }
+
             bool scrollWasBanked = Bot.Bank.Contains(scrollName);
             if (
                 scrollWasBanked
@@ -3128,7 +3256,8 @@ public class CoreLoneWolf
         CapeSpecial capeSpecial,
         HelmSpecial helmSpecial,
         WeaponSpecial weaponSpecial,
-        bool warnForElysiumUnlock = false
+        bool warnForElysiumUnlock = false,
+        WeaponSpecial[]? weaponFallbacks = null
     )
     {
         if (Bot.ShouldExit)
@@ -3244,7 +3373,8 @@ public class CoreLoneWolf
                 EnhancementSlot.Weapon,
                 type,
                 weaponSpecial: weaponSpecial,
-                warnForElysiumUnlock: warnForElysiumUnlock
+                warnForElysiumUnlock: warnForElysiumUnlock,
+                weaponFallbacks: weaponFallbacks
             );
     }
 
@@ -3254,7 +3384,8 @@ public class CoreLoneWolf
         CapeSpecial capeSpecial = CapeSpecial.None,
         HelmSpecial helmSpecial = HelmSpecial.None,
         WeaponSpecial weaponSpecial = WeaponSpecial.None,
-        bool warnForElysiumUnlock = false
+        bool warnForElysiumUnlock = false,
+        WeaponSpecial[]? weaponFallbacks = null
     )
     {
         if (Bot.ShouldExit)
@@ -3311,6 +3442,23 @@ public class CoreLoneWolf
 
             if (enhancement == null)
             {
+                if (
+                    slot == EnhancementSlot.Weapon
+                    && !IsEnhancementUnlocked(
+                        slot,
+                        capeSpecial,
+                        helmSpecial,
+                        weaponSpecial
+                    )
+                    && TryPrepareWeaponFallback(
+                        type,
+                        weaponSpecial,
+                        weaponFallbacks,
+                        warnForElysiumUnlock
+                    )
+                )
+                    return;
+
                 LogEnhancementResult(
                     slot,
                     requestedEnhancement,
@@ -3410,6 +3558,17 @@ public class CoreLoneWolf
             if (!IsEnhancementUnlocked(slot, capeSpecial, helmSpecial, weaponSpecial))
             {
                 if (
+                    slot == EnhancementSlot.Weapon
+                    && TryPrepareWeaponFallback(
+                        type,
+                        weaponSpecial,
+                        weaponFallbacks,
+                        warnForElysiumUnlock
+                    )
+                )
+                    return;
+
+                if (
                     IsMandatoryEnhancementUnlock(
                         slot,
                         capeSpecial,
@@ -3489,6 +3648,92 @@ public class CoreLoneWolf
             );
             LogEnhancementResult(slot, requestedEnhancement, "preparation failed");
         }
+    }
+
+    private bool TryPrepareWeaponFallback(
+        EnhancementType type,
+        WeaponSpecial requestedWeapon,
+        WeaponSpecial[]? weaponFallbacks,
+        bool warnForElysiumUnlock
+    )
+    {
+        if (weaponFallbacks == null || weaponFallbacks.Length == 0)
+            return false;
+
+        HashSet<WeaponSpecial> checkedWeapons = new() { requestedWeapon };
+
+        foreach (WeaponSpecial fallback in weaponFallbacks)
+        {
+            if (
+                fallback == WeaponSpecial.None
+                || !checkedWeapons.Add(fallback)
+                || !IsEnhancementUnlocked(
+                    EnhancementSlot.Weapon,
+                    CapeSpecial.None,
+                    HelmSpecial.None,
+                    fallback
+                )
+                || !TryGetEnhancementShop(
+                    EnhancementSlot.Weapon,
+                    type,
+                    CapeSpecial.None,
+                    HelmSpecial.None,
+                    fallback,
+                    out int shopId,
+                    out string enhancementName,
+                    out bool forgeShop
+                )
+            )
+                continue;
+
+            if (forgeShop)
+            {
+                Core.Join("forge");
+                if (Bot.ShouldExit)
+                    return true;
+            }
+
+            string mapName = Bot.Map?.Name ?? "whitemap";
+            bool usable = Core.GetShopItems(mapName, shopId).Any(item =>
+                item.Category == ItemCategory.Enhancement
+                && item.Level <= Bot.Player.Level
+                && (!item.Upgrade || Bot.Player.IsMember)
+                && NormalizeEnhancementName(item.Name).Contains(enhancementName)
+            );
+
+            if (!usable)
+                continue;
+
+            string requestedName = GetRequestedEnhancementName(
+                EnhancementSlot.Weapon,
+                type,
+                CapeSpecial.None,
+                HelmSpecial.None,
+                requestedWeapon
+            );
+            string fallbackName = GetRequestedEnhancementName(
+                EnhancementSlot.Weapon,
+                type,
+                CapeSpecial.None,
+                HelmSpecial.None,
+                fallback
+            );
+
+            Core.Logger(
+                $"Weapon: {requestedName} is not unlocked. Using {fallbackName}.",
+                "PrepareEnhancements"
+            );
+            PrepareEnhancementSlot(
+                EnhancementSlot.Weapon,
+                type,
+                weaponSpecial: fallback,
+                warnForElysiumUnlock: warnForElysiumUnlock,
+                weaponFallbacks: Array.Empty<WeaponSpecial>()
+            );
+            return true;
+        }
+
+        return false;
     }
 
     private static bool IsMandatoryEnhancementUnlock(
@@ -5085,6 +5330,8 @@ public class ClassPreset
     public CapeSpecial CapeEnhancement { get; set; } = CapeSpecial.None;
     public HelmSpecial HelmEnhancement { get; set; } = HelmSpecial.None;
     public WeaponSpecial WeaponEnhancement { get; set; } = WeaponSpecial.None;
+    public WeaponSpecial[] WeaponEnhancementFallbacks { get; set; } =
+        new[] { WeaponSpecial.Valiance, WeaponSpecial.Health_Vamp };
     public string Tonic { get; set; } = string.Empty;
     public string Elixir { get; set; } = string.Empty;
     public string? CombatPotion { get; set; }

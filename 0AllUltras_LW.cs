@@ -112,7 +112,7 @@ public class AllUltras_LW
         new Option<UltraEzrajal_LW.ArmyComposition>(
             "UltraEzrajalComposition",
             "→ Ultra Ezrajal Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             UltraEzrajal_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -130,7 +130,7 @@ public class AllUltras_LW
         new Option<UltraWarden_LW.ArmyComposition>(
             "UltraWardenComposition",
             "→ Ultra Warden Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             UltraWarden_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -142,7 +142,7 @@ public class AllUltras_LW
         new Option<UltraEngineer_LW.ArmyComposition>(
             "UltraEngineerComposition",
             "→ Ultra Engineer Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             UltraEngineer_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -154,7 +154,7 @@ public class AllUltras_LW
         new Option<UltraTyndarius_LW.ArmyComposition>(
             "UltraTyndariusComposition",
             "→ Ultra Tyndarius Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nFast: AI / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO",
             UltraTyndarius_LW.ArmyComposition.Default
         ),
     };
@@ -170,7 +170,7 @@ public class AllUltras_LW
         new Option<UltraDrakath_LW.ArmyComposition>(
             "ChampionDrakathComposition",
             "→ Champion Drakath Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: CS / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO",
             UltraDrakath_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -206,7 +206,7 @@ public class AllUltras_LW
         new Option<UltraDage_LW.ArmyComposition>(
             "UltraDageComposition",
             "→ Ultra Dage Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             UltraDage_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -242,7 +242,7 @@ public class AllUltras_LW
         new Option<UltraSpeaker_LW.ArmyComposition>(
             "UltraSpeakerComposition",
             "→ Ultra Speaker Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest2: CSS / AP / LR / LOO\nTest3: LR / SC / AP / LOO",
             UltraSpeaker_LW.ArmyComposition.Default
         ),
         new Option<bool>(

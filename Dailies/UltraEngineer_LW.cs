@@ -6,7 +6,7 @@ tags: ultra, engineer, army, corelonewolf
 
 //cs_include Scripts/CoreBots.cs
 //cs_include Scripts/CoreAdvanced.cs
-//cs_include Scripts/UltrasLW/CoreLoneWolf.cs
+//cs_include Scripts/Prototypes/ultras/CoreLoneWolf.cs
 using System.Collections.Generic;
 using Skua.Core.Interfaces;
 using Skua.Core.Options;
@@ -19,6 +19,7 @@ public class UltraEngineer_LW
     {
         Default,
         Stable,
+        Reliable,
     }
 
     private enum FightResult
@@ -67,7 +68,7 @@ public class UltraEngineer_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -229,7 +230,8 @@ public class UltraEngineer_LW
                 preset.BaseEnhancement,
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
-                preset.WeaponEnhancement
+                preset.WeaponEnhancement,
+                weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
         if (GetSetupOption<bool>("UsePotions"))
@@ -408,9 +410,12 @@ public class UltraEngineer_LW
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1))
-            return armyComposition == ArmyComposition.Stable
-                ? LoneWolf.KingsEcho()
-                : LoneWolf.LegionRevenant();
+            return armyComposition switch
+            {
+                ArmyComposition.Stable => LoneWolf.KingsEcho(),
+                ArmyComposition.Reliable => LoneWolf.VerusDoomKnight(),
+                _ => LoneWolf.LegionRevenant(),
+            };
 
         if (LoneWolf.IsArmyPlayer(2))
             return LoneWolf.StoneCrusher();
