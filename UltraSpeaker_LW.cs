@@ -287,6 +287,15 @@ public class UltraSpeaker_LW
         if (!ValidateOptions())
             return;
 
+        if (bruteForceMethod)
+        {
+            Core.Logger(
+                "Brute Force Method is enabled. This is only used when Ultra Speaker is bugged. The script will fail if used incorrectly.",
+                LogPrefix,
+                messageBox: true
+            );
+        }
+
         if (!LoneWolf.StartArmySync(SyncFileName, 4, masterMode ? "Setup" : null))
             return;
 

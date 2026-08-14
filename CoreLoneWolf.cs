@@ -3718,10 +3718,26 @@ public class CoreLoneWolf
                 HelmSpecial.None,
                 fallback
             );
+            bool isHealthVampFallback = fallback == WeaponSpecial.Health_Vamp;
+            string fallbackMessage =
+                $"Weapon: {requestedName} is not unlocked. Using {fallbackName}.";
+
+            if (isHealthVampFallback)
+            {
+                string playerAlias =
+                    armyPlayerIndex >= 0
+                        ? $"Player {armyPlayerIndex + 1}"
+                        : "Current Player";
+                string currentClassName =
+                    Bot.Player.CurrentClass?.Name ?? "Unknown Class";
+                fallbackMessage =
+                    $"Weapon: {requestedName} is not unlocked on {playerAlias} ({currentClassName}). Using Health Vamp as fallback. The script may fail";
+            }
 
             Core.Logger(
-                $"Weapon: {requestedName} is not unlocked. Using {fallbackName}.",
-                "PrepareEnhancements"
+                fallbackMessage,
+                "PrepareEnhancements",
+                messageBox: isHealthVampFallback
             );
             PrepareEnhancementSlot(
                 EnhancementSlot.Weapon,
