@@ -57,11 +57,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
     private const int SolsticeGreatbladeShopItemId = 10751;
     private const int EntwinedGreatbladeShopItemId = 10752;
 
-    private const int NightFallsQuestId = 9303;
-    private const int DawnBreaksQuestId = 9304;
-    private const int FrozenCycleQuestId = 9305;
-
-    private readonly HashSet<int> disabledDailyQuests = new();
     private string playerAlias = string.Empty;
     private bool buybackMethod;
 
@@ -169,7 +164,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                 sunlightTarget,
                 "SUNLIGHT_READY",
                 "SUNLIGHT",
-                DawnBreaksQuestId,
                 midnightSun.RunOnceFromMaster,
                 startDungeon: midnightSun.StartFromMaster,
                 stopDungeon: midnightSun.StopFromMaster
@@ -179,7 +173,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                 moonlightTarget,
                 "MOONLIGHT_READY",
                 "MOONLIGHT",
-                NightFallsQuestId,
                 solsticeMoon.RunOnceFromMaster,
                 startDungeon: solsticeMoon.StartFromMaster,
                 stopDungeon: solsticeMoon.StopFromMaster
@@ -189,7 +182,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                 155,
                 "ECLIPTIC_READY",
                 "ECLIPTIC",
-                FrozenCycleQuestId,
                 ascendEclipse.RunOnceFromMaster,
                 startDungeon: ascendEclipse.StartFromMaster,
                 stopDungeon: ascendEclipse.StopFromMaster
@@ -272,7 +264,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                     1,
                     "RITE_SUNLIGHT_READY",
                     "RITE_SUNLIGHT",
-                    DawnBreaksQuestId,
                     () => new MidnightSun_LW().RunFromMaster(),
                     needsRite
                 )
@@ -281,7 +272,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                     1,
                     "RITE_MOONLIGHT_READY",
                     "RITE_MOONLIGHT",
-                    NightFallsQuestId,
                     () => new SolsticeMoon_LW().RunFromMaster(),
                     needsRite
                 )
@@ -331,7 +321,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
         int targetQuantity,
         string readySignal,
         string phaseName,
-        int dailyQuestId,
         Func<bool> runDungeon,
         bool localRequired = true,
         Func<bool>? startDungeon = null,
@@ -373,7 +362,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                         return false;
                 }
 
-                TryAcceptDaily(dailyQuestId);
                 bool runSucceeded = runDungeon();
                 if (!runSucceeded)
                     LoneWolf.SendArmySignal($"{phaseName}_FAILURE");
@@ -386,7 +374,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
                         $"The {phaseName} dungeon run failed on at least one player."
                     );
 
-                TryCompleteDaily(dailyQuestId);
                 cycle++;
             }
 
@@ -575,48 +562,6 @@ public class GreatbladeOfTheEntwinedEclipse_LW
 
     private bool Owns(string itemName) =>
         Bot.Inventory.Contains(itemName) || Bot.Bank.Contains(itemName);
-
-    private void TryAcceptDaily(int questId)
-    {
-        if (
-            disabledDailyQuests.Contains(questId)
-            || Bot.Quests.IsDailyComplete(questId)
-            || Bot.Quests.IsInProgress(questId)
-        )
-            return;
-
-        if (Core.EnsureAccept(questId))
-            return;
-
-        disabledDailyQuests.Add(questId);
-        Core.Logger(
-            $"Optional daily quest {questId} could not be accepted. Direct dungeon farming will continue.",
-            LogPrefix
-        );
-    }
-
-    private void TryCompleteDaily(int questId)
-    {
-        if (
-            disabledDailyQuests.Contains(questId)
-            || Bot.Quests.IsDailyComplete(questId)
-            || !Bot.Quests.IsInProgress(questId)
-            || !Bot.Quests.CanComplete(questId)
-        )
-            return;
-
-        if (Core.EnsureComplete(questId))
-        {
-            Core.Logger($"Optional daily quest {questId} completed.", LogPrefix);
-            return;
-        }
-
-        disabledDailyQuests.Add(questId);
-        Core.Logger(
-            $"Optional daily quest {questId} could not be completed. Direct dungeon farming will continue.",
-            LogPrefix
-        );
-    }
 
     private void RegisterDrops()
     {

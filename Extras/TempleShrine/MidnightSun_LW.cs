@@ -43,6 +43,7 @@ public class MidnightSun_LW
     private const string RoomTwoPad = "Left";
     private const string FinalRoomCell = "r3";
     private const string FinalRoomPad = "Left";
+    private const int DailyQuestId = 9304;
     private const int EnterSecondaryMapId = 1;
     private const int EnterPrimaryMapId = 2;
     private const int RoomOneSecondaryMapId = 3;
@@ -221,6 +222,8 @@ public class MidnightSun_LW
         if (Bot.ShouldExit)
             return false;
 
+        Temple.TryAcceptOptionalDaily(DailyQuestId);
+
         if (
             !PrepareRunConsumables(preset)
             || !Temple.PrepareParty(players)
@@ -249,6 +252,7 @@ public class MidnightSun_LW
         if (!Temple.ReturnHome())
             return false;
 
+        Temple.TryCompleteOptionalDaily(DailyQuestId);
         return true;
     }
 

@@ -42,6 +42,7 @@ public class SolsticeMoon_LW
     private const string RoomTwoPad = "Right";
     private const string FinalRoomCell = "r3";
     private const string FinalRoomPad = "Right";
+    private const int DailyQuestId = 9303;
     private const int EnterPrimaryMapId = 1;
     private const int EnterSecondaryMapId = 2;
     private const int RoomOneSecondaryMapId = 3;
@@ -220,6 +221,8 @@ public class SolsticeMoon_LW
         if (Bot.ShouldExit)
             return false;
 
+        Temple.TryAcceptOptionalDaily(DailyQuestId);
+
         if (
             !PrepareRunConsumables(preset)
             || !Temple.PrepareParty(players)
@@ -248,6 +251,7 @@ public class SolsticeMoon_LW
         if (!Temple.ReturnHome())
             return false;
 
+        Temple.TryCompleteOptionalDaily(DailyQuestId);
         return true;
     }
 

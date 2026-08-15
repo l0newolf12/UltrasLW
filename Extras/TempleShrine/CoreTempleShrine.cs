@@ -37,6 +37,7 @@ public class CoreTempleShrine
     private string expectedPartyLeader = string.Empty;
     private string recoveryScope = string.Empty;
     private bool? reportedAlive;
+    private readonly HashSet<int> disabledOptionalDailyQuests = new();
 
     public CoreTempleShrine()
     {
@@ -45,6 +46,51 @@ public class CoreTempleShrine
     public CoreTempleShrine(CoreLoneWolf loneWolf)
     {
         LoneWolf = loneWolf;
+    }
+
+    public void TryAcceptOptionalDaily(int questId)
+    {
+        if (
+            disabledOptionalDailyQuests.Contains(questId)
+            || Bot.Quests.IsDailyComplete(questId)
+            || Bot.Quests.IsInProgress(questId)
+        )
+            return;
+
+        if (Core.EnsureAccept(questId))
+            return;
+
+        disabledOptionalDailyQuests.Add(questId);
+        Core.Logger(
+            $"Optional daily quest {questId} could not be accepted. Direct dungeon farming will continue.",
+            "CoreTempleShrine"
+        );
+    }
+
+    public void TryCompleteOptionalDaily(int questId)
+    {
+        if (
+            disabledOptionalDailyQuests.Contains(questId)
+            || Bot.Quests.IsDailyComplete(questId)
+            || !Bot.Quests.IsInProgress(questId)
+            || !Bot.Quests.CanComplete(questId)
+        )
+            return;
+
+        if (Core.EnsureComplete(questId))
+        {
+            Core.Logger(
+                $"Optional daily quest {questId} completed.",
+                "CoreTempleShrine"
+            );
+            return;
+        }
+
+        disabledOptionalDailyQuests.Add(questId);
+        Core.Logger(
+            $"Optional daily quest {questId} could not be completed. Direct dungeon farming will continue.",
+            "CoreTempleShrine"
+        );
     }
 
     public bool PrepareParty(string[] players)

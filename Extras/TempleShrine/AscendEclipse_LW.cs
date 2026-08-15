@@ -53,6 +53,7 @@ public class AscendEclipse_LW
     private const string RoomTwoPad = "Left";
     private const string FinalRoomCell = "r3";
     private const string FinalRoomPad = "Left";
+    private const int DailyQuestId = 9305;
     private const int EnterPrimaryMapId = 1;
     private const int EnterSecondaryMapId = 2;
     private const int RoomOnePrimaryMapId = 3;
@@ -240,6 +241,8 @@ public class AscendEclipse_LW
         if (Bot.ShouldExit)
             return false;
 
+        Temple.TryAcceptOptionalDaily(DailyQuestId);
+
         if (
             (!masterMode && !EnsureRiteOfAscension())
             || !PrepareRunConsumables(preset)
@@ -269,6 +272,7 @@ public class AscendEclipse_LW
         if (!Temple.ReturnHome())
             return false;
 
+        Temple.TryCompleteOptionalDaily(DailyQuestId);
         return true;
     }
 
