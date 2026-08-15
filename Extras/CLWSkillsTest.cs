@@ -36,6 +36,7 @@ public class CLWSkillsTest
         Lord_Of_Order,
         Oracle,
         Guardian,
+        Chaos_Avenger,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -92,6 +93,12 @@ public class CLWSkillsTest
             "Use the Gunslinger Stance and skill 0 cycle.",
             false
         ),
+        new Option<bool>(
+            "UseChaosAvengerOptimizedMode",
+            "Use Chaos Avenger Optimized Mode",
+            "Wait for Branded to be consumed before using the next array skill.",
+            false
+        ),
         new Option<int>(
             "TestDurationSeconds",
             "Test Duration Seconds",
@@ -140,11 +147,15 @@ public class CLWSkillsTest
         bool useChronoShadowHunterGunslingerMode = Bot.Config.Get<bool>(
             "UseChronoShadowHunterGunslingerMode"
         );
+        bool useChaosAvengerOptimizedMode = Bot.Config.Get<bool>(
+            "UseChaosAvengerOptimizedMode"
+        );
         ClassPreset preset = GetClassPreset(
             selectedPreset,
             useLightCasterHealingMode,
             useShamanFarmMode,
-            useChronoShadowHunterGunslingerMode
+            useChronoShadowHunterGunslingerMode,
+            useChaosAvengerOptimizedMode
         );
 
         Core.Join("classhall");
@@ -216,7 +227,8 @@ public class CLWSkillsTest
         SkillPresetChoice selectedPreset,
         bool useLightCasterHealingMode,
         bool useShamanFarmMode,
-        bool useChronoShadowHunterGunslingerMode
+        bool useChronoShadowHunterGunslingerMode,
+        bool useChaosAvengerOptimizedMode
     ) =>
         selectedPreset switch
         {
@@ -242,6 +254,9 @@ public class CLWSkillsTest
             SkillPresetChoice.Lord_Of_Order => LoneWolf.LordOfOrder(),
             SkillPresetChoice.Oracle => LoneWolf.Oracle(),
             SkillPresetChoice.Guardian => LoneWolf.Guardian(),
+            SkillPresetChoice.Chaos_Avenger => LoneWolf.ChaosAvenger(
+                useChaosAvengerOptimizedMode
+            ),
             _ => LoneWolf.LegionRevenant(),
         };
 }

@@ -6,6 +6,7 @@ tags: core, lonewolf, ultra
 
 //cs_include Scripts/CoreBots.cs
 //cs_include Scripts/CoreAdvanced.cs
+using CommunityToolkit.Mvvm.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -436,6 +437,23 @@ public class CoreLoneWolf
             CombatPotion = "Felicitous Philtre",
         };
 
+    public ClassPreset ChaosAvenger(bool optimizedMode = false) =>
+        new()
+        {
+            ClassName = "Chaos Avenger",
+            Skills = new[] { 3, 4, 1, 2 },
+            SkillMode = optimizedMode
+                ? SkillEngineMode.ChaosAvengerOptimized
+                : SkillEngineMode.Simple,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Valiance,
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
+        };
+
     public ClassPreset Shaman(bool farmMode = false) =>
         new()
         {
@@ -523,6 +541,7 @@ public class CoreLoneWolf
             CapeEnhancement = CapeSpecial.Lament,
             HelmEnhancement = HelmSpecial.Vim,
             WeaponEnhancement = WeaponSpecial.Ravenous,
+            WeaponEnhancementFallbacks = new[] { WeaponSpecial.Spiral_Carve },
             Tonic = "Fate Tonic",
             Elixir = "Potent Battle Elixir",
             CombatPotion = "Felicitous Philtre",
@@ -699,6 +718,9 @@ public class CoreLoneWolf
         string blockedSimpleSkillTargetAura = ""
     )
     {
+        if (!ValidateFunctionBasedSkillsDisabled())
+            return;
+
         if (skillEngineRunning)
             return;
 
@@ -1122,6 +1144,7 @@ public class CoreLoneWolf
                         skillEngineMode is SkillEngineMode.Simple
                             or SkillEngineMode.LightCasterHealing
                             or SkillEngineMode.VoidHighlord
+                            or SkillEngineMode.ChaosAvengerOptimized
                     )
                         skillIndex = 0;
 
@@ -1356,6 +1379,11 @@ public class CoreLoneWolf
                             skillEngineMode == SkillEngineMode.VoidHighlord
                         )
                             VoidHighlordSkillEngine();
+                        else if (
+                            skillEngineMode
+                            == SkillEngineMode.ChaosAvengerOptimized
+                        )
+                            ChaosAvengerOptimizedSkillEngine();
                         else if (
                             skillEngineMode == SkillEngineMode.Simple
                             && blockedSimpleSkill is >= 1 and <= 4
@@ -1637,6 +1665,20 @@ public class CoreLoneWolf
             skillIndex = (index + 1) % skills.Length;
             return;
         }
+    }
+
+    private void ChaosAvengerOptimizedSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+            return;
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        if (Bot.Target.GetAura("Branded") != null)
+            return;
+
+        CustomSkillEngine();
     }
 
     private void LightCasterHealingSkillEngine()
@@ -4107,6 +4149,37 @@ public class CoreLoneWolf
             "PrepareEnhancements"
         );
 
+    public bool ValidateFunctionBasedSkillsDisabled()
+    {
+        IPluginContainer? plugin = Ioc.Default
+            .GetRequiredService<IPluginManager>()
+            .GetContainer("Function Based Skills");
+
+        if (plugin == null)
+            return true;
+
+        bool enabled;
+        try
+        {
+            enabled = plugin.OptionContainer.Get<bool>("Enabled");
+        }
+        catch
+        {
+            enabled = true;
+        }
+
+        if (!enabled)
+            return true;
+
+        Core.Logger(
+            "Function Based Skills is detected. Disable it before running this script.\nAll LW scripts use their own custom skill engine, and this plugin will interfere with it.",
+            "ValidateFunctionBasedSkillsDisabled",
+            messageBox: true,
+            stopBot: true
+        );
+        return false;
+    }
+
     public bool ValidatePrivateRoomNumber(int roomNumber)
     {
         if (roomNumber >= 1001 && roomNumber <= 99999)
@@ -4320,6 +4393,9 @@ public class CoreLoneWolf
         string? optionCategory = null
     )
     {
+        if (!ValidateFunctionBasedSkillsDisabled())
+            return false;
+
         ResetArmyState();
 
         if (
@@ -5334,6 +5410,7 @@ public enum SkillEngineMode
     VoidHighlord,
     ChronoShadowHunterStable,
     ChronoShadowHunterGunslinger,
+    ChaosAvengerOptimized,
 }
 
 public class ClassPreset
