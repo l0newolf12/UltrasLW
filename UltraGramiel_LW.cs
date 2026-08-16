@@ -345,7 +345,11 @@ public class UltraGramiel_LW
             LogPrefix,
             IsShamanPlayer()
                 ? SkillEngineMode.Simple
-                : preset.SkillMode
+                : preset.SkillMode,
+            blockedStrictSkill: IsTest3VerusDoomKnight() ? 4 : 0,
+            blockedStrictSkillTargetAura: IsTest3VerusDoomKnight()
+                ? "Safeguard"
+                : string.Empty
         );
         Core.Logger($"{LogPrefix} {playerAlias} started Phase 1.");
 

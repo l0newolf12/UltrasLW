@@ -137,6 +137,7 @@ public class CoreLoneWolf
     private int kingsEchoManaThreshold = 12;
     private int blockedStrictSkill;
     private string blockedStrictSkillSelfAura = string.Empty;
+    private string blockedStrictSkillTargetAura = string.Empty;
     private int blockedSimpleSkill;
     private string blockedSimpleSkillTargetAura = string.Empty;
     private bool shamanSkillThreeEnabled = true;
@@ -716,7 +717,8 @@ public class CoreLoneWolf
         int blockedStrictSkill = 0,
         string blockedStrictSkillSelfAura = "",
         int blockedSimpleSkill = 0,
-        string blockedSimpleSkillTargetAura = ""
+        string blockedSimpleSkillTargetAura = "",
+        string blockedStrictSkillTargetAura = ""
     )
     {
         if (!ValidateFunctionBasedSkillsDisabled())
@@ -735,6 +737,7 @@ public class CoreLoneWolf
         this.kingsEchoManaThreshold = kingsEchoManaThreshold;
         this.blockedStrictSkill = blockedStrictSkill;
         this.blockedStrictSkillSelfAura = blockedStrictSkillSelfAura;
+        this.blockedStrictSkillTargetAura = blockedStrictSkillTargetAura;
         this.blockedSimpleSkill = blockedSimpleSkill;
         this.blockedSimpleSkillTargetAura = blockedSimpleSkillTargetAura;
         skillIndex = 0;
@@ -792,6 +795,7 @@ public class CoreLoneWolf
         maintainedPotion = null;
         blockedStrictSkill = 0;
         blockedStrictSkillSelfAura = string.Empty;
+        blockedStrictSkillTargetAura = string.Empty;
         blockedSimpleSkill = 0;
         blockedSimpleSkillTargetAura = string.Empty;
     }
@@ -1758,8 +1762,16 @@ public class CoreLoneWolf
 
         if (
             skill == blockedStrictSkill
-            && !string.IsNullOrWhiteSpace(blockedStrictSkillSelfAura)
-            && Bot.Self.HasActiveAura(blockedStrictSkillSelfAura)
+            && (
+                (
+                    !string.IsNullOrWhiteSpace(blockedStrictSkillSelfAura)
+                    && Bot.Self.HasActiveAura(blockedStrictSkillSelfAura)
+                )
+                || (
+                    !string.IsNullOrWhiteSpace(blockedStrictSkillTargetAura)
+                    && Bot.Target.GetAura(blockedStrictSkillTargetAura) != null
+                )
+            )
         )
         {
             index = (index + 1) % skills.Length;
