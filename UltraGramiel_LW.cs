@@ -22,6 +22,7 @@ public class UltraGramiel_LW
         Optimized,
         Test,
         Test2,
+        Test3,
     }
 
     private enum PhaseResult
@@ -98,7 +99,7 @@ public class UltraGramiel_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: Shaman / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: Shaman / SC / AP / LOO\nTest3: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -688,7 +689,7 @@ public class UltraGramiel_LW
                                 <= GetTestHoldThreshold(nukeCycle)
                         )
                         {
-                            if (IsTest2Shaman())
+                            if (SuppressPlayerOneDuringHealingHold())
                                 LoneWolf.SetOrdinarySkillsSuppressed(true);
                             else
                                 LoneWolf.SetSkillEngineSkills(GetHealingHoldSkills());
@@ -706,7 +707,7 @@ public class UltraGramiel_LW
 
                     if (UsesHealingHoldComposition())
                     {
-                        if (IsTest2Shaman())
+                        if (SuppressPlayerOneDuringHealingHold())
                             LoneWolf.SetOrdinarySkillsSuppressed(false);
                         else
                             LoneWolf.SetSkillEngineSkills(normalSkills);
@@ -951,6 +952,7 @@ public class UltraGramiel_LW
                 || LoneWolf.IsArmyPlayer(3)
                 || LoneWolf.IsArmyPlayer(4)
                 || IsShamanPlayer()
+                || IsTest3VerusDoomKnight()
             )
                 tauntTargetUntil = DateTimeOffset.Now.AddMilliseconds(
                     TauntTargetHold
@@ -1073,9 +1075,11 @@ public class UltraGramiel_LW
             }
         }
 
-        bool crystalBalancer = UsesDefaultCompositionBehavior()
-            ? LoneWolf.IsArmyPlayer(4)
-            : LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2);
+        bool crystalBalancer = armyComposition == ArmyComposition.Test3
+            ? LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4)
+            : UsesDefaultCompositionBehavior()
+                ? LoneWolf.IsArmyPlayer(4)
+                : LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2);
         if (!crystalBalancer)
         {
             LoneWolf.MaintainTarget(assignedCrystal);
@@ -1224,7 +1228,10 @@ public class UltraGramiel_LW
         armyComposition == ArmyComposition.Test;
 
     private bool UsesHealingHoldComposition() =>
-        armyComposition is ArmyComposition.Test or ArmyComposition.Test2;
+        armyComposition
+            is ArmyComposition.Test
+                or ArmyComposition.Test2
+                or ArmyComposition.Test3;
 
     private bool UsesDefaultCompositionBehavior() =>
         armyComposition is ArmyComposition.Default or ArmyComposition.Test;
@@ -1233,6 +1240,9 @@ public class UltraGramiel_LW
     {
         if (LoneWolf.IsArmyPlayer(1))
         {
+            if (armyComposition == ArmyComposition.Test3)
+                return LoneWolf.VerusDoomKnight();
+
             if (
                 armyComposition
                 is ArmyComposition.Optimized or ArmyComposition.Test2
@@ -1276,6 +1286,13 @@ public class UltraGramiel_LW
     private bool IsTest2Shaman() =>
         armyComposition == ArmyComposition.Test2
         && LoneWolf.IsArmyPlayer(1);
+
+    private bool IsTest3VerusDoomKnight() =>
+        armyComposition == ArmyComposition.Test3
+        && LoneWolf.IsArmyPlayer(1);
+
+    private bool SuppressPlayerOneDuringHealingHold() =>
+        IsTest2Shaman() || IsTest3VerusDoomKnight();
 
     private bool IsShamanPlayer() =>
         armyComposition

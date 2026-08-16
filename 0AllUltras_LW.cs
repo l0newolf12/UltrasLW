@@ -230,7 +230,7 @@ public class AllUltras_LW
         new Option<UltraGramiel_LW.ArmyComposition>(
             "UltraGramielComposition",
             "→ Ultra Gramiel Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: Shaman / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: Shaman / SC / AP / LOO\nTest3: VDK / SC / AP / LOO",
             UltraGramiel_LW.ArmyComposition.Default
         ),
         new Option<bool>(
