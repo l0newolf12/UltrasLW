@@ -154,7 +154,7 @@ public class AllUltras_LW
         new Option<UltraTyndarius_LW.ArmyComposition>(
             "UltraTyndariusComposition",
             "→ Ultra Tyndarius Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO\nTest: LR / SC / AP / LOO",
             UltraTyndarius_LW.ArmyComposition.Default
         ),
     };
@@ -230,7 +230,7 @@ public class AllUltras_LW
         new Option<UltraGramiel_LW.ArmyComposition>(
             "UltraGramielComposition",
             "→ Ultra Gramiel Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: Shaman / SC / AP / LOO",
             UltraGramiel_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -242,7 +242,7 @@ public class AllUltras_LW
         new Option<UltraSpeaker_LW.ArmyComposition>(
             "UltraSpeakerComposition",
             "→ Ultra Speaker Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest2: CSS / AP / LR / LOO\nTest3: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest3: LR / SC / AP / LOO",
             UltraSpeaker_LW.ArmyComposition.Default
         ),
         new Option<bool>(

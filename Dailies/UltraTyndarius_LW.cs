@@ -22,6 +22,7 @@ public class UltraTyndarius_LW
         Stable,
         Reliable,
         Fast,
+        Test,
     }
 
     private enum FightResult
@@ -78,7 +79,7 @@ public class UltraTyndarius_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO\nTest: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -159,9 +160,7 @@ public class UltraTyndarius_LW
 
         playerAlias = GetPlayerAlias();
         ClassPreset preset = GetClassPreset();
-        isTaunter = UsesDefaultFightRoles()
-            || LoneWolf.IsArmyPlayer(3)
-            || LoneWolf.IsArmyPlayer(4);
+        isTaunter = IsTaunterRole();
 
         if (isTaunter)
             preset.CombatPotion = null;
@@ -402,6 +401,13 @@ public class UltraTyndarius_LW
                 partnerPlayerNumber: 3
             );
 
+        if (armyComposition == ArmyComposition.Test)
+            return FightRightAddThenBoss(
+                preset,
+                fightAttempt,
+                tauntLeftAdd: LoneWolf.IsArmyPlayer(2)
+            );
+
         if (!UsesDefaultFightRoles())
             return FightDamageDealer(preset, fightAttempt);
 
@@ -431,6 +437,46 @@ public class UltraTyndarius_LW
 
             if (!immediateTauntAccepted)
                 LoneWolf.MaintainTarget(GetPriorityTarget());
+
+            Bot.Sleep(FightPollDelay);
+        }
+
+        return FinishFight(FightResult.Stopped);
+    }
+
+    private FightResult FightRightAddThenBoss(
+        ClassPreset preset,
+        int fightAttempt,
+        bool tauntLeftAdd
+    )
+    {
+        StartSkillEngine(preset);
+        Core.Logger($"{LogPrefix} {playerAlias} started fighting.");
+        bool bossLocked = false;
+
+        while (!Bot.ShouldExit)
+        {
+            FightResult result = RecoverFromDeath(fightAttempt, out _);
+            if (result != FightResult.Continue)
+                return FinishFight(result);
+
+            bool immediateTauntAccepted = tauntLeftAdd
+                && LoneWolf.IsMonsterAlive(FirstAddMapId)
+                && LoneWolf.RequestImmediateTaunt(FirstAddMapId);
+
+            if (!immediateTauntAccepted)
+            {
+                int targetMapId = bossLocked
+                    ? MainBossMapId
+                    : LoneWolf.IsMonsterAlive(SecondAddMapId)
+                        ? SecondAddMapId
+                        : MainBossMapId;
+
+                if (targetMapId == MainBossMapId)
+                    bossLocked = true;
+
+                LoneWolf.MaintainTarget(targetMapId);
+            }
 
             Bot.Sleep(FightPollDelay);
         }
@@ -650,8 +696,7 @@ public class UltraTyndarius_LW
             isTaunter,
             LogPrefix,
             preset.SkillMode,
-            maintainedPotion: !UsesDefaultFightRoles()
-                && !isTaunter
+            maintainedPotion: !isTaunter
                 && GetSetupOption<bool>("UsePotions")
                     ? preset.CombatPotion
                     : null
@@ -855,6 +900,15 @@ public class UltraTyndarius_LW
     private bool UsesDefaultFightRoles() =>
         armyComposition == ArmyComposition.Default
         || armyComposition == ArmyComposition.Reliable;
+
+    private bool IsTaunterRole() =>
+        UsesDefaultFightRoles()
+        || LoneWolf.IsArmyPlayer(3)
+        || LoneWolf.IsArmyPlayer(4)
+        || (
+            armyComposition == ArmyComposition.Test
+            && LoneWolf.IsArmyPlayer(2)
+        );
 
     private string GetPlayerAlias()
     {

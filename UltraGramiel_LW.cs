@@ -21,6 +21,7 @@ public class UltraGramiel_LW
         Default,
         Optimized,
         Test,
+        Test2,
     }
 
     private enum PhaseResult
@@ -97,7 +98,7 @@ public class UltraGramiel_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: Shaman / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -281,7 +282,7 @@ public class UltraGramiel_LW
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
                 preset.WeaponEnhancement,
-                warnForElysiumUnlock: IsOptimizedShaman(),
+                warnForElysiumUnlock: IsShamanPlayer(),
                 weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
@@ -341,7 +342,7 @@ public class UltraGramiel_LW
             playerAlias,
             true,
             LogPrefix,
-            IsOptimizedShaman()
+            IsShamanPlayer()
                 ? SkillEngineMode.Simple
                 : preset.SkillMode
         );
@@ -423,7 +424,7 @@ public class UltraGramiel_LW
                 ref tauntTargetUntil
             );
 
-            bool shamanSkillFourPending = IsOptimizedShaman()
+            bool shamanSkillFourPending = IsShamanPlayer()
                 && LoneWolf.HasPendingTargetedPrioritySkill();
             if (!shamanSkillFourPending)
             {
@@ -519,7 +520,7 @@ public class UltraGramiel_LW
                 return FinishPhaseTwo(PhaseResult.Completed);
             }
 
-            if (IsTestComposition() && damageHold)
+            if (UsesHealingHoldComposition() && damageHold)
             {
                 if (
                     !Bot.Player.HasTarget
@@ -598,7 +599,7 @@ public class UltraGramiel_LW
                             }
                         }
 
-                        if (IsTestComposition())
+                        if (UsesHealingHoldComposition())
                         {
                             if (attack == ownedAttack)
                             {
@@ -608,6 +609,7 @@ public class UltraGramiel_LW
 
                                 if (
                                     LoneWolf.IsArmyPlayer(1)
+                                    && IsTestComposition()
                                     && usePhaseTwoSlowdown
                                 )
                                 {
@@ -680,27 +682,35 @@ public class UltraGramiel_LW
                     if (!LoneWolf.HasPacketDetection(1))
                     {
                         if (
-                            IsTestComposition()
+                            UsesHealingHoldComposition()
                             && !damageHold
                             && GetGramielHealthPercentage()
                                 <= GetTestHoldThreshold(nukeCycle)
                         )
                         {
-                            LoneWolf.SetSkillEngineSkills(GetTestHealingSkills());
+                            if (IsTest2Shaman())
+                                LoneWolf.SetOrdinarySkillsSuppressed(true);
+                            else
+                                LoneWolf.SetSkillEngineSkills(GetHealingHoldSkills());
+
                             Bot.Combat.CancelAutoAttack();
                             damageHold = true;
                             Core.Logger($"{LogPrefix} {playerAlias} started the nuke cycle {nukeCycle} healing hold at {GetTestHoldThreshold(nukeCycle)}% Gramiel HP.");
                         }
 
-                        if (IsTestComposition() && damageHold)
+                        if (UsesHealingHoldComposition() && damageHold)
                             Bot.Combat.CancelAutoAttack();
 
                         break;
                     }
 
-                    if (IsTestComposition())
+                    if (UsesHealingHoldComposition())
                     {
-                        LoneWolf.SetSkillEngineSkills(normalSkills);
+                        if (IsTest2Shaman())
+                            LoneWolf.SetOrdinarySkillsSuppressed(false);
+                        else
+                            LoneWolf.SetSkillEngineSkills(normalSkills);
+
                         damageHold = false;
                         rotationRestricted = false;
                         LoneWolf.MaintainTarget(GramielMapId);
@@ -843,7 +853,7 @@ public class UltraGramiel_LW
             ? new[] { 3, 4, 2, 1 }
             : preset.Skills;
 
-    private int[] GetTestHealingSkills() =>
+    private int[] GetHealingHoldSkills() =>
         LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
             ? new[] { 3 }
             : new[] { 2 };
@@ -940,7 +950,7 @@ public class UltraGramiel_LW
                 LoneWolf.IsArmyPlayer(2)
                 || LoneWolf.IsArmyPlayer(3)
                 || LoneWolf.IsArmyPlayer(4)
-                || IsOptimizedShaman()
+                || IsShamanPlayer()
             )
                 tauntTargetUntil = DateTimeOffset.Now.AddMilliseconds(
                     TauntTargetHold
@@ -958,7 +968,7 @@ public class UltraGramiel_LW
         ref bool safeguardSkillFourQueued
     )
     {
-        if (!IsOptimizedShaman())
+        if (!IsShamanPlayer())
             return;
 
         if (!safeguardActive)
@@ -1213,6 +1223,9 @@ public class UltraGramiel_LW
     private bool IsTestComposition() =>
         armyComposition == ArmyComposition.Test;
 
+    private bool UsesHealingHoldComposition() =>
+        armyComposition is ArmyComposition.Test or ArmyComposition.Test2;
+
     private bool UsesDefaultCompositionBehavior() =>
         armyComposition is ArmyComposition.Default or ArmyComposition.Test;
 
@@ -1220,7 +1233,10 @@ public class UltraGramiel_LW
     {
         if (LoneWolf.IsArmyPlayer(1))
         {
-            if (armyComposition == ArmyComposition.Optimized)
+            if (
+                armyComposition
+                is ArmyComposition.Optimized or ArmyComposition.Test2
+            )
             {
                 ClassPreset shaman = LoneWolf.Shaman();
                 shaman.BaseEnhancement = EnhancementType.Wizard;
@@ -1255,6 +1271,15 @@ public class UltraGramiel_LW
 
     private bool IsOptimizedShaman() =>
         armyComposition == ArmyComposition.Optimized
+        && LoneWolf.IsArmyPlayer(1);
+
+    private bool IsTest2Shaman() =>
+        armyComposition == ArmyComposition.Test2
+        && LoneWolf.IsArmyPlayer(1);
+
+    private bool IsShamanPlayer() =>
+        armyComposition
+            is ArmyComposition.Optimized or ArmyComposition.Test2
         && LoneWolf.IsArmyPlayer(1);
 
     private string GetPlayerAlias()

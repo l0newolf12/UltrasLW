@@ -30,7 +30,6 @@ public class UltraSpeaker_LW
         Stable,
         Pay2Win,
         Test,
-        Test2,
         Test3,
     }
 
@@ -158,45 +157,8 @@ public class UltraSpeaker_LW
         new(ListenMessage, 2, fresh: true),
     };
 
-    private static readonly SpeakerStep[] Test2OpeningSteps =
-    {
-        new(TruthMessage, 4, fresh: true),
-        new(ListenMessage, 4, fresh: false),
-    };
-
-    private static readonly SpeakerStep[] Test2SectionOneSteps =
-    {
-        new(TruthMessage, 2, fresh: true, skillOwner: 2, skill: 3),
-        new(ListenMessage, 3, fresh: true),
-        new(TruthMessage, 4, fresh: true),
-    };
-
-    private static readonly SpeakerStep[] Test2SectionTwoSteps =
-    {
-        new(ListenMessage, 3, fresh: true),
-        new(TruthMessage, 3, fresh: false, skillOwner: 2, skill: 3),
-        new(TruthMessage, 4, fresh: true, skillOwner: 4, skill: 4),
-        new(ListenMessage, 4, fresh: false),
-    };
-
-    private static readonly SpeakerStep[] Test2SectionThreeSteps =
-    {
-        new(TruthMessage, 2, fresh: true, skillOwner: 2, skill: 3),
-        new(ListenMessage, 3, fresh: true),
-        new(TruthMessage, 3, fresh: false),
-    };
-
-    private static readonly SpeakerStep[] Test2SectionFourSteps =
-    {
-        new(ListenMessage, 3, fresh: true, skillOwner: 2, skill: 3),
-        new(TruthMessage, 3, fresh: false, skillOwner: 4, skill: 4),
-        new(TruthMessage, 4, fresh: true),
-        new(ListenMessage, 4, fresh: false),
-    };
-
     private static readonly int[] ZoneOwners = { 2, 1, 3, 4 };
     private static readonly int[] Pay2WinZoneOwners = { 1, 3, 4, 2 };
-    private static readonly int[] Test2ZoneOwners = { 1, 3, 2, 4 };
 
     private string playerAlias = string.Empty;
     private ArmyComposition armyComposition = ArmyComposition.Default;
@@ -217,7 +179,7 @@ public class UltraSpeaker_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest2: CSS / AP / LR / LOO\nTest3: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest3: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -1204,19 +1166,6 @@ public class UltraSpeaker_LW
             };
         }
 
-        if (armyComposition == ArmyComposition.Test2)
-        {
-            return section switch
-            {
-                0 => Test2OpeningSteps,
-                1 => Test2SectionOneSteps,
-                2 => Test2SectionTwoSteps,
-                3 => Test2SectionThreeSteps,
-                4 => Test2SectionFourSteps,
-                _ => Array.Empty<SpeakerStep>(),
-            };
-        }
-
         return section switch
         {
             0 => OpeningSteps,
@@ -1234,7 +1183,6 @@ public class UltraSpeaker_LW
         int[] zoneOwners = armyComposition switch
         {
             ArmyComposition.Pay2Win => Pay2WinZoneOwners,
-            ArmyComposition.Test2 => Test2ZoneOwners,
             _ => ZoneOwners,
         };
         return zoneOwners[(cycle - 1) % zoneOwners.Length];
@@ -1243,15 +1191,11 @@ public class UltraSpeaker_LW
     private int GetArchPaladinPlayer() => armyComposition switch
     {
         ArmyComposition.Pay2Win => 4,
-        ArmyComposition.Test2 => 2,
         _ => 3,
     };
 
     private bool IsTaunter() =>
-        (
-            armyComposition != ArmyComposition.Pay2Win
-            && armyComposition != ArmyComposition.Test2
-        )
+        armyComposition != ArmyComposition.Pay2Win
         || !LoneWolf.IsArmyPlayer(1);
 
     private bool IsAtCoordinate(int x, int y) =>
@@ -1290,15 +1234,6 @@ public class UltraSpeaker_LW
             if (armyComposition == ArmyComposition.Pay2Win)
                 return LoneWolf.Guardian();
 
-            if (armyComposition == ArmyComposition.Test2)
-            {
-                ClassPreset chronoShadowHunter = LoneWolf.ChronoShadowHunter(
-                    gunslingerMode: true
-                );
-                chronoShadowHunter.CapeEnhancement = CapeSpecial.Penitence;
-                return chronoShadowHunter;
-            }
-
             ClassPreset preset = armyComposition == ArmyComposition.Stable
                 ? LoneWolf.VerusDoomKnight()
                 : LoneWolf.LegionRevenant();
@@ -1312,17 +1247,6 @@ public class UltraSpeaker_LW
 
         if (LoneWolf.IsArmyPlayer(2))
         {
-            if (armyComposition == ArmyComposition.Test2)
-            {
-                ClassPreset archPaladin = LoneWolf.ArchPaladin();
-                archPaladin.CapeEnhancement = CapeSpecial.Penitence;
-
-                if (!bruteForceMethod)
-                    archPaladin.Skills = new[] { 2, 1 };
-
-                return archPaladin;
-            }
-
             ClassPreset preset = LoneWolf.StoneCrusher();
             preset.CapeEnhancement = CapeSpecial.Penitence;
             preset.Elixir = "Divine Elixir";
@@ -1331,10 +1255,7 @@ public class UltraSpeaker_LW
 
         if (LoneWolf.IsArmyPlayer(3))
         {
-            if (
-                armyComposition == ArmyComposition.Pay2Win
-                || armyComposition == ArmyComposition.Test2
-            )
+            if (armyComposition == ArmyComposition.Pay2Win)
             {
                 ClassPreset legionRevenant = LoneWolf.LegionRevenant();
                 legionRevenant.CapeEnhancement = CapeSpecial.Penitence;

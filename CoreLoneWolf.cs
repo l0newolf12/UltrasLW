@@ -28,6 +28,7 @@ public class CoreLoneWolf
     private CoreBots Core => CoreBots.Instance;
 
     private const int SkillPollDelay = 100;
+    private const int CSSGunslingerFirePollDelay = 50;
     private const string ArmyProtocolVersion = "1";
     private const int ArmyPollDelay = 500;
     private const int ArmyFileRetryDelay = 100;
@@ -1397,7 +1398,12 @@ public class CoreLoneWolf
                     }
                 }
 
-                Bot.Sleep(SkillPollDelay);
+                Bot.Sleep(
+                    skillEngineMode == SkillEngineMode.ChronoShadowHunterGunslinger
+                        && cssGunslingerFiring
+                        ? CSSGunslingerFirePollDelay
+                        : SkillPollDelay
+                );
             }
         }
         catch (Exception ex)
