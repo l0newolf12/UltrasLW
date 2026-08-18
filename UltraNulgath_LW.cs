@@ -20,6 +20,7 @@ public class UltraNulgath_LW
     {
         Default,
         Stable,
+        Reliable,
         Optimized,
     }
 
@@ -76,7 +77,7 @@ public class UltraNulgath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -465,12 +466,22 @@ public class UltraNulgath_LW
         if (armyComposition == ArmyComposition.Optimized)
             return NulgathMapId;
 
-        if (armyComposition == ArmyComposition.Stable)
+        if (
+            armyComposition == ArmyComposition.Stable
+            || armyComposition == ArmyComposition.Reliable
+        )
         {
             if (LoneWolf.IsArmyPlayer(1))
+            {
+                if (armyComposition == ArmyComposition.Reliable)
+                    return LoneWolf.IsMonsterAlive(BladeMapId)
+                        ? BladeMapId
+                        : NulgathMapId;
+
                 return LoneWolf.GetMonsterHP(BladeMapId) > 500_000
                     ? BladeMapId
                     : NulgathMapId;
+            }
 
             if (LoneWolf.IsArmyPlayer(2))
                 return LoneWolf.IsMonsterAlive(BladeMapId)
@@ -578,6 +589,9 @@ public class UltraNulgath_LW
         {
             if (armyComposition == ArmyComposition.Optimized)
                 return LoneWolf.DragonOfTime();
+
+            if (armyComposition == ArmyComposition.Reliable)
+                return LoneWolf.VerusDoomKnight();
 
             return armyComposition == ArmyComposition.Stable
                 ? LoneWolf.KingsEcho()

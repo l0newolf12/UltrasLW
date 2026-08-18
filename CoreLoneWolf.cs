@@ -4339,7 +4339,8 @@ public class CoreLoneWolf
             return false;
 
         bool hasRequiredWeapon = Bot.Inventory.Items.Any(item =>
-            !Core.NoneEnhancableFilter(item)
+            item.Equipped
+            && !Core.NoneEnhancableFilter(item)
             && Core.GetBoostFloat(item, "dmgAll") >= 1.30f
         );
 
@@ -4377,7 +4378,7 @@ public class CoreLoneWolf
         if (playersMissingWeapon.Count > 0)
         {
             Core.Logger(
-                $"{ultraName} requires every player to have a 30% damage boost weapon or greater in their inventory. Players missing the requirement: {string.Join(", ", playersMissingWeapon)}.",
+                $"{ultraName} requires every player to equip a 30% damage boost weapon or greater before starting. Players with an invalid equipped weapon: {string.Join(", ", playersMissingWeapon)}. Equip a qualifying weapon and restart the script.",
                 "ValidateUltraAccess",
                 messageBox: true,
                 stopBot: true

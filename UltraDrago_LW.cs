@@ -20,6 +20,7 @@ public class UltraDrago_LW
     {
         Default,
         Stable,
+        Reliable,
     }
 
     private enum FightResult
@@ -79,7 +80,7 @@ public class UltraDrago_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -160,7 +161,7 @@ public class UltraDrago_LW
 
         playerAlias = GetPlayerAlias();
         ClassPreset preset = GetClassPreset();
-        isTaunter = armyComposition == ArmyComposition.Default
+        isTaunter = armyComposition != ArmyComposition.Stable
             || !LoneWolf.IsArmyPlayer(1);
 
         if (isTaunter)
@@ -381,7 +382,7 @@ public class UltraDrago_LW
 
     private FightResult Fight(int fightAttempt)
     {
-        if (armyComposition == ArmyComposition.Default)
+        if (armyComposition != ArmyComposition.Stable)
             return FightGuardPair(fightAttempt);
 
         if (LoneWolf.IsArmyPlayer(1))
@@ -922,9 +923,14 @@ public class UltraDrago_LW
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1))
-            return armyComposition == ArmyComposition.Stable
-                ? LoneWolf.KingsEcho()
+        {
+            if (armyComposition == ArmyComposition.Stable)
+                return LoneWolf.KingsEcho();
+
+            return armyComposition == ArmyComposition.Reliable
+                ? LoneWolf.VerusDoomKnight()
                 : LoneWolf.LegionRevenant();
+        }
 
         if (LoneWolf.IsArmyPlayer(2))
             return LoneWolf.StoneCrusher();

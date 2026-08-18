@@ -23,6 +23,7 @@ public class UltraGramiel_LW
         Test,
         Test2,
         Test3,
+        Test4,
     }
 
     private enum PhaseResult
@@ -99,7 +100,7 @@ public class UltraGramiel_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: Shaman / SC / AP / LOO\nTest3: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: Shaman / SC / AP / LOO\nTest3: VDK / SC / AP / LOO\nTest4: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -346,8 +347,8 @@ public class UltraGramiel_LW
             IsShamanPlayer()
                 ? SkillEngineMode.Simple
                 : preset.SkillMode,
-            blockedStrictSkill: IsTest3VerusDoomKnight() ? 4 : 0,
-            blockedStrictSkillTargetAura: IsTest3VerusDoomKnight()
+            blockedStrictSkill: IsVerusDoomKnightComposition() ? 4 : 0,
+            blockedStrictSkillTargetAura: IsVerusDoomKnightComposition()
                 ? "Safeguard"
                 : string.Empty
         );
@@ -609,7 +610,7 @@ public class UltraGramiel_LW
                             if (attack == ownedAttack)
                             {
                                 LoneWolf.MaintainTarget(GramielMapId);
-                                LoneWolf.RequestTaunt(GramielMapId);
+                                RequestGramielTaunt(GramielMapId);
                                 Core.Logger($"{LogPrefix} {playerAlias} requested Gramiel taunt on nuke cycle {nukeCycle}, attack {attack}.");
 
                                 if (
@@ -645,7 +646,7 @@ public class UltraGramiel_LW
                             continue;
 
                         LoneWolf.MaintainTarget(GramielMapId);
-                        LoneWolf.RequestTaunt(GramielMapId);
+                        RequestGramielTaunt(GramielMapId);
                         Core.Logger($"{LogPrefix} {playerAlias} requested Gramiel taunt on nuke cycle {nukeCycle}, attack {attack}.");
 
                         if (IsOptimizedShaman())
@@ -949,14 +950,14 @@ public class UltraGramiel_LW
 
             int crystalMapId = GetAssignedCrystalMapId();
             LoneWolf.MaintainTarget(crystalMapId);
-            LoneWolf.RequestTaunt(crystalMapId);
+            RequestGramielTaunt(crystalMapId);
 
             if (
                 LoneWolf.IsArmyPlayer(2)
                 || LoneWolf.IsArmyPlayer(3)
                 || LoneWolf.IsArmyPlayer(4)
                 || IsShamanPlayer()
-                || IsTest3VerusDoomKnight()
+                || IsVerusDoomKnightComposition()
             )
                 tauntTargetUntil = DateTimeOffset.Now.AddMilliseconds(
                     TauntTargetHold
@@ -1079,7 +1080,8 @@ public class UltraGramiel_LW
             }
         }
 
-        bool crystalBalancer = armyComposition == ArmyComposition.Test3
+        bool crystalBalancer = armyComposition
+            is ArmyComposition.Test3 or ArmyComposition.Test4
             ? LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4)
             : UsesDefaultCompositionBehavior()
                 ? LoneWolf.IsArmyPlayer(4)
@@ -1235,7 +1237,8 @@ public class UltraGramiel_LW
         armyComposition
             is ArmyComposition.Test
                 or ArmyComposition.Test2
-                or ArmyComposition.Test3;
+                or ArmyComposition.Test3
+                or ArmyComposition.Test4;
 
     private bool UsesDefaultCompositionBehavior() =>
         armyComposition is ArmyComposition.Default or ArmyComposition.Test;
@@ -1244,7 +1247,10 @@ public class UltraGramiel_LW
     {
         if (LoneWolf.IsArmyPlayer(1))
         {
-            if (armyComposition == ArmyComposition.Test3)
+            if (
+                armyComposition
+                is ArmyComposition.Test3 or ArmyComposition.Test4
+            )
                 return LoneWolf.VerusDoomKnight();
 
             if (
@@ -1291,12 +1297,20 @@ public class UltraGramiel_LW
         armyComposition == ArmyComposition.Test2
         && LoneWolf.IsArmyPlayer(1);
 
-    private bool IsTest3VerusDoomKnight() =>
-        armyComposition == ArmyComposition.Test3
+    private bool IsVerusDoomKnightComposition() =>
+        armyComposition is ArmyComposition.Test3 or ArmyComposition.Test4
         && LoneWolf.IsArmyPlayer(1);
 
     private bool SuppressPlayerOneDuringHealingHold() =>
-        IsTest2Shaman() || IsTest3VerusDoomKnight();
+        IsTest2Shaman() || IsVerusDoomKnightComposition();
+
+    private void RequestGramielTaunt(int mapId)
+    {
+        if (armyComposition == ArmyComposition.Test4)
+            LoneWolf.RequestAbsolutePriorityTaunt(mapId);
+        else
+            LoneWolf.RequestTaunt(mapId);
+    }
 
     private bool IsShamanPlayer() =>
         armyComposition
