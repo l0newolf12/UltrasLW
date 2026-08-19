@@ -242,7 +242,7 @@ public class AllUltras_LW
         new Option<UltraSpeaker_LW.ArmyComposition>(
             "UltraSpeakerComposition",
             "→ Ultra Speaker Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest3: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nTest3: LR / SC / AP / LOO",
             UltraSpeaker_LW.ArmyComposition.Default
         ),
         new Option<bool>(

@@ -95,7 +95,7 @@ public class GreatbladeOfTheEntwinedEclipse_LW
         new Option<VictorMatsuriMaskado_LW.ArmyComposition>(
             "VictorMatsuriComposition",
             "Victor Matsuri Composition",
-            "Default: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO",
             VictorMatsuriMaskado_LW.ArmyComposition.Default
         ),
         new Option<MidnightSun_LW.ArmyComposition>(

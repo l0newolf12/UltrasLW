@@ -21,6 +21,7 @@ public class VictorMatsuriMaskado_LW
     public enum ArmyComposition
     {
         Default,
+        Stable,
     }
 
     private enum FightResult
@@ -106,7 +107,7 @@ public class VictorMatsuriMaskado_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -452,6 +453,7 @@ public class VictorMatsuriMaskado_LW
     private void StartStorySkillEngine(ClassPreset preset)
     {
         int[] skills = LoneWolf.IsArmyPlayer(1)
+            && armyComposition == ArmyComposition.Default
             ? LoneWolf.LegionRevenant().Skills
             : preset.Skills;
 
@@ -575,6 +577,15 @@ public class VictorMatsuriMaskado_LW
 
     private FightResult FightDamageDealer(ClassPreset preset, int fightAttempt)
     {
+        if (IsStablePlayerOne())
+        {
+            LoneWolf.MaintainTarget(BossMapId);
+            Bot.Sleep(1000);
+
+            if (Bot.ShouldExit)
+                return FinishFight(FightResult.Stopped);
+        }
+
         StartBossSkillEngine(preset);
         Core.Logger($"{LogPrefix} {playerAlias} started fighting attempt {fightAttempt}.");
 
@@ -782,6 +793,8 @@ public class VictorMatsuriMaskado_LW
 
     private void StartBossSkillEngine(ClassPreset preset)
     {
+        bool stablePlayerOne = IsStablePlayerOne();
+
         LoneWolf.StartSkillEngine(
             preset.Skills,
             playerAlias,
@@ -792,8 +805,15 @@ public class VictorMatsuriMaskado_LW
                 && GetSetupOption<bool>("UsePotions")
                     ? preset.CombatPotion
                     : null,
-            blockedSimpleSkill: LoneWolf.IsArmyPlayer(1) ? 1 : 0,
+            blockedStrictSkill: stablePlayerOne ? 1 : 0,
+            blockedStrictSkillTargetAura: stablePlayerOne
+                ? PraxisAura
+                : string.Empty,
+            blockedSimpleSkill: LoneWolf.IsArmyPlayer(1) && !stablePlayerOne
+                ? 1
+                : 0,
             blockedSimpleSkillTargetAura: LoneWolf.IsArmyPlayer(1)
+                && !stablePlayerOne
                 ? PraxisAura
                 : string.Empty
         );
@@ -1133,6 +1153,7 @@ public class VictorMatsuriMaskado_LW
         return armyComposition switch
         {
             ArmyComposition.Default => GetDefaultClassPreset(),
+            ArmyComposition.Stable => GetStableClassPreset(),
             _ => GetDefaultClassPreset(),
         };
     }
@@ -1174,6 +1195,21 @@ public class VictorMatsuriMaskado_LW
         lordOfOrder.CombatPotion = null;
         return lordOfOrder;
     }
+
+    private ClassPreset GetStableClassPreset()
+    {
+        if (!LoneWolf.IsArmyPlayer(1))
+            return GetDefaultClassPreset();
+
+        ClassPreset preset = LoneWolf.VerusDoomKnight();
+        preset.WeaponEnhancement = WeaponSpecial.Praxis;
+        preset.WeaponEnhancementFallbacks = Array.Empty<WeaponSpecial>();
+        return preset;
+    }
+
+    private bool IsStablePlayerOne() =>
+        armyComposition == ArmyComposition.Stable
+        && LoneWolf.IsArmyPlayer(1);
 
     private string GetPlayerAlias()
     {

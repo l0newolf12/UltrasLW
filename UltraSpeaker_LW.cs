@@ -30,6 +30,7 @@ public class UltraSpeaker_LW
         Stable,
         Pay2Win,
         Test,
+        Test2,
         Test3,
     }
 
@@ -179,7 +180,7 @@ public class UltraSpeaker_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest3: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nTest3: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -423,7 +424,7 @@ public class UltraSpeaker_LW
                 "ct",
                 new[] { TruthMessage, ListenMessage },
                 pauseSkillChoice: ListenMessage,
-                pauseEveryChoice: armyComposition == ArmyComposition.Test3
+                pauseEveryChoice: UsesAllFreshAbsolutePriorityTaunts()
             )
         )
         {
@@ -668,7 +669,7 @@ public class UltraSpeaker_LW
             );
             bool absolutePriorityWarning = listenDetected
                 || (
-                    armyComposition == ArmyComposition.Test3
+                    UsesAllFreshAbsolutePriorityTaunts()
                     && string.Equals(
                         expected.Warning,
                         TruthMessage,
@@ -1234,12 +1235,12 @@ public class UltraSpeaker_LW
             if (armyComposition == ArmyComposition.Pay2Win)
                 return LoneWolf.Guardian();
 
-            ClassPreset preset = armyComposition == ArmyComposition.Stable
+            ClassPreset preset = UsesStableComposition()
                 ? LoneWolf.VerusDoomKnight()
                 : LoneWolf.LegionRevenant();
             preset.CapeEnhancement = CapeSpecial.Penitence;
 
-            if (armyComposition != ArmyComposition.Stable)
+            if (!UsesStableComposition())
                 preset.HelmEnhancement = HelmSpecial.None;
 
             return preset;
@@ -1292,6 +1293,12 @@ public class UltraSpeaker_LW
 
         return lordOfOrder;
     }
+
+    private bool UsesStableComposition() =>
+        armyComposition is ArmyComposition.Stable or ArmyComposition.Test2;
+
+    private bool UsesAllFreshAbsolutePriorityTaunts() =>
+        armyComposition is ArmyComposition.Test2 or ArmyComposition.Test3;
 
     private string GetPlayerAlias()
     {
