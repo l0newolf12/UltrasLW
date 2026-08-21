@@ -22,6 +22,7 @@ public class UltraDrakath_LW
         Stable,
         Reliable,
         Optimized,
+        Pay2Win,
     }
 
     private enum FightResult
@@ -100,7 +101,7 @@ public class UltraDrakath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -183,7 +184,22 @@ public class UltraDrakath_LW
         isTaunter = LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(3);
 
         ClassPreset preset = GetClassPreset();
-        if (
+        if (armyComposition == ArmyComposition.Pay2Win)
+        {
+            if (LoneWolf.IsArmyPlayer(2))
+            {
+                preset.WeaponEnhancement = WeaponSpecial.Praxis;
+                preset.CapeEnhancement = CapeSpecial.Lament;
+            }
+            else if (LoneWolf.IsArmyPlayer(3))
+            {
+                preset.HelmEnhancement = HelmSpecial.Hearty;
+                preset.CapeEnhancement = CapeSpecial.Lament;
+            }
+            else if (LoneWolf.IsArmyPlayer(4))
+                preset.CombatPotion = "Felicitous Philtre";
+        }
+        else if (
             LoneWolf.IsArmyPlayer(3)
             || (
                 (
@@ -485,14 +501,16 @@ public class UltraDrakath_LW
         if (LoneWolf.IsArmyPlayer(2))
             return armyComposition switch
             {
-                ArmyComposition.Stable => AdjustedStoneCrusherTauntThresholds,
+                ArmyComposition.Stable or ArmyComposition.Pay2Win =>
+                    AdjustedStoneCrusherTauntThresholds,
                 _ => StoneCrusherTauntThresholds,
             };
 
         if (LoneWolf.IsArmyPlayer(3))
             return armyComposition switch
             {
-                ArmyComposition.Stable => AdjustedArchPaladinTauntThresholds,
+                ArmyComposition.Stable or ArmyComposition.Pay2Win =>
+                    AdjustedArchPaladinTauntThresholds,
                 _ => ArchPaladinTauntThresholds,
             };
 
@@ -507,14 +525,19 @@ public class UltraDrakath_LW
                 ArmyComposition.Stable => LoneWolf.KingsEcho(),
                 ArmyComposition.Reliable => LoneWolf.VerusDoomKnight(),
                 ArmyComposition.Optimized => LoneWolf.ChaosSlayer(),
+                ArmyComposition.Pay2Win => LoneWolf.Guardian(),
                 _ => LoneWolf.LegionRevenant(),
             };
 
         if (LoneWolf.IsArmyPlayer(2))
-            return LoneWolf.StoneCrusher();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.ArchPaladin()
+                : LoneWolf.StoneCrusher();
 
         if (LoneWolf.IsArmyPlayer(3))
-            return LoneWolf.ArchPaladin();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.LegionRevenant()
+                : LoneWolf.ArchPaladin();
 
         return LoneWolf.LordOfOrder();
     }

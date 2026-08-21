@@ -23,6 +23,7 @@ public class UltraDarkon_LW
         Optimized,
         Test,
         Test2,
+        Test3,
     }
 
     private enum FightResult
@@ -87,7 +88,7 @@ public class UltraDarkon_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nTest3: Guardian / AP / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -169,9 +170,7 @@ public class UltraDarkon_LW
             return;
 
         playerAlias = GetPlayerAlias();
-        isTaunter = UsesDefaultFightRoles()
-            ? LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
-            : LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(3);
+        isTaunter = IsTaunter();
 
         ClassPreset preset = GetClassPreset();
         if (isTaunter)
@@ -324,11 +323,13 @@ public class UltraDarkon_LW
 
     private bool StartDarkonPacketDetector()
     {
-        bool detectsAttack2 = UsesTestFightBehavior()
-            ? LoneWolf.IsArmyPlayer(3)
-            : UsesDefaultFightRoles()
-                ? LoneWolf.IsArmyPlayer(4)
-                : LoneWolf.IsArmyPlayer(1);
+        bool detectsAttack2 = armyComposition == ArmyComposition.Test3
+            ? LoneWolf.IsArmyPlayer(2)
+            : UsesTestFightBehavior()
+                ? LoneWolf.IsArmyPlayer(3)
+                : UsesDefaultFightRoles()
+                    ? LoneWolf.IsArmyPlayer(4)
+                    : LoneWolf.IsArmyPlayer(1);
         string animationMarker = detectsAttack2
             ? Attack2Marker
             : Attack3Marker;
@@ -367,7 +368,17 @@ public class UltraDarkon_LW
                     ? preset.CombatPotion
                     : null,
             kingsEchoManaThreshold:
-                armyComposition == ArmyComposition.Stable ? 25 : 12
+                armyComposition == ArmyComposition.Stable ? 25 : 12,
+            blockedSimpleSkill:
+                armyComposition == ArmyComposition.Test3
+                && LoneWolf.IsArmyPlayer(1)
+                    ? 4
+                    : 0,
+            blockedSimpleSkillTargetAura:
+                armyComposition == ArmyComposition.Test3
+                && LoneWolf.IsArmyPlayer(1)
+                    ? AMajorAura
+                    : string.Empty
         );
         Core.Logger($"{LogPrefix} {playerAlias} started fighting.");
 
@@ -390,6 +401,7 @@ public class UltraDarkon_LW
         bool apPhaseThreeConfigured = false;
         bool apSkillThreeBlocked = false;
         bool handlesAttack2Signals = !UsesDefaultFightRoles()
+            && !UsesTestFightBehavior()
             && LoneWolf.IsArmyPlayer(4);
 
         while (!Bot.ShouldExit)
@@ -509,7 +521,7 @@ public class UltraDarkon_LW
 
             if (
                 UsesTestFightBehavior()
-                && LoneWolf.IsArmyPlayer(3)
+                && IsArchPaladinPlayer()
             )
                 TryQueueApExtraHeal(
                     apPhaseThreeConfigured,
@@ -566,7 +578,7 @@ public class UltraDarkon_LW
 
             if (
                 UsesTestFightBehavior()
-                && LoneWolf.IsArmyPlayer(3)
+                && IsArchPaladinPlayer()
             )
             {
                 SchedulePacketHeal(
@@ -586,6 +598,7 @@ public class UltraDarkon_LW
 
             if (
                 !UsesDefaultFightRoles()
+                && !UsesTestFightBehavior()
                 && LoneWolf.IsArmyPlayer(1)
             )
             {
@@ -605,7 +618,7 @@ public class UltraDarkon_LW
                 continue;
             }
 
-            if (LoneWolf.IsArmyPlayer(3))
+            if (IsArchPaladinPlayer())
                 SchedulePacketHeal(
                     "Attack3",
                     cycle,
@@ -616,9 +629,7 @@ public class UltraDarkon_LW
 
             if (isTaunter)
             {
-                bool openingOwner = !UsesDefaultFightRoles()
-                    ? LoneWolf.IsArmyPlayer(2)
-                    : LoneWolf.IsArmyPlayer(1);
+                bool openingOwner = IsOpeningTauntOwner();
                 bool ownsCycle = openingOwner
                     ? cycle % 2 == 1
                     : cycle % 2 == 0;
@@ -631,37 +642,34 @@ public class UltraDarkon_LW
                     Core.Logger($"{LogPrefix} {playerAlias} detected owned Attack3 cycle {cycle}.");
                 }
             }
-            else if (
-                UsesDefaultFightRoles()
-                && LoneWolf.IsArmyPlayer(4)
-            )
+            if (UsesTestFightBehavior() && LoneWolf.IsArmyPlayer(4))
             {
-                if (UsesTestFightBehavior())
-                {
-                    if (cycle == 1 || cycle % 2 == 0)
-                        SchedulePacketHeal(
-                            "Attack3",
-                            cycle,
-                            ref delayedHealCycle,
-                            ref delayedHealAttack,
-                            ref delayedHealAt
-                        );
-                }
-                else
-                {
+                if (cycle == 1 || cycle % 2 == 0)
                     SchedulePacketHeal(
-                        "Attack2",
+                        "Attack3",
                         cycle,
                         ref delayedHealCycle,
                         ref delayedHealAttack,
                         ref delayedHealAt
                     );
-                    ScheduleLooExtraHeal(
-                        cycle,
-                        ref looExtraHealCycle,
-                        ref looExtraHealWindowStart
-                    );
-                }
+            }
+            else if (
+                UsesDefaultFightRoles()
+                && LoneWolf.IsArmyPlayer(4)
+            )
+            {
+                SchedulePacketHeal(
+                    "Attack2",
+                    cycle,
+                    ref delayedHealCycle,
+                    ref delayedHealAttack,
+                    ref delayedHealAt
+                );
+                ScheduleLooExtraHeal(
+                    cycle,
+                    ref looExtraHealCycle,
+                    ref looExtraHealWindowStart
+                );
             }
         }
 
@@ -851,7 +859,7 @@ public class UltraDarkon_LW
     )
     {
         if (
-            !LoneWolf.IsArmyPlayer(3)
+            !IsArchPaladinPlayer()
             || !Bot.Player.Alive
             || !Bot.Player.HasTarget
             || Bot.Player.Target?.MapID != DarkonMapId
@@ -1087,11 +1095,32 @@ public class UltraDarkon_LW
 
     private bool UsesDefaultFightRoles() =>
         armyComposition == ArmyComposition.Default
-        || UsesTestFightBehavior();
+        || armyComposition == ArmyComposition.Test
+        || armyComposition == ArmyComposition.Test2;
 
     private bool UsesTestFightBehavior() =>
         armyComposition == ArmyComposition.Test
-        || armyComposition == ArmyComposition.Test2;
+        || armyComposition == ArmyComposition.Test2
+        || armyComposition == ArmyComposition.Test3;
+
+    private bool IsTaunter() =>
+        armyComposition == ArmyComposition.Test3
+            ? LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4)
+            : UsesDefaultFightRoles()
+                ? LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
+                : LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(3);
+
+    private bool IsArchPaladinPlayer() =>
+        armyComposition == ArmyComposition.Test3
+            ? LoneWolf.IsArmyPlayer(2)
+            : LoneWolf.IsArmyPlayer(3);
+
+    private bool IsOpeningTauntOwner() =>
+        armyComposition == ArmyComposition.Test3
+            ? LoneWolf.IsArmyPlayer(3)
+            : UsesDefaultFightRoles()
+                ? LoneWolf.IsArmyPlayer(1)
+                : LoneWolf.IsArmyPlayer(2);
 
     private ClassPreset GetClassPreset()
     {
@@ -1099,7 +1128,9 @@ public class UltraDarkon_LW
 
         if (LoneWolf.IsArmyPlayer(1))
         {
-            if (armyComposition == ArmyComposition.Test2)
+            if (armyComposition == ArmyComposition.Test3)
+                preset = LoneWolf.Guardian();
+            else if (armyComposition == ArmyComposition.Test2)
             {
                 preset = LoneWolf.VerusDoomKnight();
                 preset.CapeEnhancement = CapeSpecial.Penitence;
@@ -1120,14 +1151,31 @@ public class UltraDarkon_LW
         }
         else if (LoneWolf.IsArmyPlayer(2))
         {
-            preset = LoneWolf.StoneCrusher();
-            preset.CapeEnhancement = CapeSpecial.Absolution;
+            if (armyComposition == ArmyComposition.Test3)
+            {
+                preset = LoneWolf.ArchPaladin();
+                preset.Skills = new[] { 3, 1, 4 };
+                preset.CapeEnhancement = CapeSpecial.Lament;
+            }
+            else
+            {
+                preset = LoneWolf.StoneCrusher();
+                preset.CapeEnhancement = CapeSpecial.Absolution;
+            }
         }
         else if (LoneWolf.IsArmyPlayer(3))
         {
-            preset = LoneWolf.ArchPaladin();
-            preset.Skills = new[] { 3, 1, 4 };
-            preset.CapeEnhancement = CapeSpecial.Lament;
+            if (armyComposition == ArmyComposition.Test3)
+            {
+                preset = LoneWolf.LegionRevenant();
+                preset.CapeEnhancement = CapeSpecial.Lament;
+            }
+            else
+            {
+                preset = LoneWolf.ArchPaladin();
+                preset.Skills = new[] { 3, 1, 4 };
+                preset.CapeEnhancement = CapeSpecial.Lament;
+            }
         }
         else
         {

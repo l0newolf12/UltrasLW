@@ -56,6 +56,7 @@ public class CoreLoneWolf
     private const string ShamanElementalEmbraceAura = "Elemental Embrace";
     private const string ChronoShadowHunterRoundsEmptyAura = "Rounds Empty";
     private const string ChronoShadowHunterGunslingerAura = "Gunslinger Stance";
+    private const string GuardianSpiritAura = "Guardian Spirit";
 
     private enum PotionCategory
     {
@@ -553,7 +554,8 @@ public class CoreLoneWolf
         new()
         {
             ClassName = "Guardian",
-            Skills = new[] { 1, 2, 1, 4 },
+            Skills = new[] { 1, 2 },
+            SkillMode = SkillEngineMode.Guardian,
             BaseEnhancement = EnhancementType.Lucky,
             CapeEnhancement = CapeSpecial.Lament,
             HelmEnhancement = HelmSpecial.Vim,
@@ -1419,6 +1421,8 @@ public class CoreLoneWolf
                             skillEngineMode == SkillEngineMode.ScionOfFlames
                         )
                             ScionOfFlamesSkillEngine();
+                        else if (skillEngineMode == SkillEngineMode.Guardian)
+                            GuardianSkillEngine();
                         else if (
                             skillEngineMode == SkillEngineMode.Simple
                             && blockedSimpleSkill is >= 1 and <= 4
@@ -1705,6 +1709,40 @@ public class CoreLoneWolf
             skillIndex = (index + 1) % skills.Length;
             return;
         }
+    }
+
+    private void GuardianSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+            return;
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        float guardianSpirit = Bot.Self.Auras
+            .Where(aura =>
+                aura.Name.Equals(
+                    GuardianSpiritAura,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            .Select(aura => aura.Value)
+            .DefaultIfEmpty(0)
+            .Max();
+        bool skillFourBlocked =
+            blockedSimpleSkill == 4
+            && !string.IsNullOrWhiteSpace(blockedSimpleSkillTargetAura)
+            && Bot.Target.GetAura(blockedSimpleSkillTargetAura) != null;
+
+        if (guardianSpirit >= 15 && !skillFourBlocked)
+        {
+            if (Bot.Skills.CanUseSkill(4))
+                Bot.Skills.UseSkill(4);
+
+            return;
+        }
+
+        CustomSkillEngine();
     }
 
     private void ChaosAvengerOptimizedSkillEngine()
@@ -2108,6 +2146,15 @@ public class CoreLoneWolf
 
     public void GenericPrebuff()
     {
+        if (
+            string.Equals(
+                Bot.Player.CurrentClass?.Name,
+                "Guardian",
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
+            return;
+
         Bot.Skills.UseSkill(3);
         Bot.Sleep(750);
         Bot.Skills.UseSkill(2);
@@ -5514,6 +5561,7 @@ public enum SkillEngineMode
     ChronoShadowHunterGunslinger,
     ChaosAvengerOptimized,
     ScionOfFlames,
+    Guardian,
 }
 
 public class ClassPreset
