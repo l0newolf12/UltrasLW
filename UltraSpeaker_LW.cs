@@ -280,7 +280,7 @@ public class UltraSpeaker_LW
         if (IsTaunter())
             preset.CombatPotion = null;
 
-        Core.Logger($"{LogPrefix} started as {playerAlias}.");
+        Core.Logger($"{LogPrefix} started as {playerAlias} using {armyComposition} composition.");
 
         LoneWolf.AcceptUltraQuest(UltraQuestId);
 
@@ -382,7 +382,11 @@ public class UltraSpeaker_LW
         if (GetSetupOption<bool>("UsePotions"))
         {
             if (preset.ClassName == "StoneCrusher")
-                preset.Elixir = LoneWolf.GetDivineElixir();
+                preset.Elixir = LoneWolf.GetDivineElixir(
+                    preset,
+                    playerAlias,
+                    LogPrefix
+                );
 
             LoneWolf.PreparePotions(
                 preset.Tonic,

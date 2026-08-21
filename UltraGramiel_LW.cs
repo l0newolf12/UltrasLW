@@ -185,7 +185,7 @@ public class UltraGramiel_LW
         ClassPreset preset = GetClassPreset();
         preset.CombatPotion = null;
 
-        Core.Logger($"{LogPrefix} started as {playerAlias}.");
+        Core.Logger($"{LogPrefix} started as {playerAlias} using {armyComposition} composition.");
         LoneWolf.AcceptUltraQuest(UltraQuestId);
 
         if (!Prepare(preset) || !Sync("SETUP_DONE"))

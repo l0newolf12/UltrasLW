@@ -201,7 +201,7 @@ public class MidnightSun_LW
         if (isTaunter)
             preset.CombatPotion = null;
 
-        Core.Logger($"{LogPrefix} started as {playerAlias}.");
+        Core.Logger($"{LogPrefix} started as {playerAlias} using {armyComposition} composition.");
 
         if (
             !Temple.PrepareOracle()

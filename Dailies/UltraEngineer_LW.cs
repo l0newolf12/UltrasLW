@@ -150,7 +150,7 @@ public class UltraEngineer_LW
         playerAlias = GetPlayerAlias();
         ClassPreset preset = GetClassPreset();
 
-        Core.Logger($"{LogPrefix} started as {playerAlias}.");
+        Core.Logger($"{LogPrefix} started as {playerAlias} using {armyComposition} composition.");
 
         LoneWolf.AcceptUltraQuest(UltraQuestId);
 

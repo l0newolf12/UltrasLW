@@ -456,6 +456,21 @@ public class CoreLoneWolf
             CombatPotion = "Felicitous Philtre",
         };
 
+    public ClassPreset ScionOfFlames() =>
+        new()
+        {
+            ClassName = "Scion of Flames",
+            Skills = new[] { 0, 3, 2, 1 },
+            SkillMode = SkillEngineMode.ScionOfFlames,
+            BaseEnhancement = EnhancementType.Wizard,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Valiance,
+            Tonic = "Sage Tonic",
+            Elixir = "Potent Malevolence Elixir",
+            CombatPotion = "Potent Honor Potion",
+        };
+
     public ClassPreset Shaman(bool farmMode = false) =>
         new()
         {
@@ -1150,6 +1165,7 @@ public class CoreLoneWolf
                             or SkillEngineMode.LightCasterHealing
                             or SkillEngineMode.VoidHighlord
                             or SkillEngineMode.ChaosAvengerOptimized
+                            or SkillEngineMode.ScionOfFlames
                     )
                         skillIndex = 0;
 
@@ -1176,20 +1192,30 @@ public class CoreLoneWolf
                         );
                         Volatile.Write(ref skillEnginePaused, 0);
                     }
-                    else if (
-                        Bot.Skills.CanUseSkill(5)
-                        && Bot.Skills.UseSkill(5)
-                    )
+                    else
                     {
-                        Interlocked.CompareExchange(
-                            ref pendingAbsolutePriorityTauntMapId,
-                            0,
-                            absolutePriorityTauntMapId
-                        );
-                        Volatile.Write(ref skillEnginePaused, 0);
-                        Core.Logger(
-                            $"{LogPrefix} {role} used absolute priority taunt."
-                        );
+                        var target = Bot.Player.Target;
+                        if (
+                            !Bot.Player.HasTarget
+                            || target?.MapID != absolutePriorityTauntMapId
+                            || target?.HP <= 0
+                        )
+                            Bot.Combat.Attack(absolutePriorityTauntMapId);
+                        else if (
+                            Bot.Skills.CanUseSkill(5)
+                            && Bot.Skills.UseSkill(5)
+                        )
+                        {
+                            Interlocked.CompareExchange(
+                                ref pendingAbsolutePriorityTauntMapId,
+                                0,
+                                absolutePriorityTauntMapId
+                            );
+                            Volatile.Write(ref skillEnginePaused, 0);
+                            Core.Logger(
+                                $"{LogPrefix} {role} used absolute priority taunt."
+                            );
+                        }
                     }
 
                     Bot.Sleep(SkillPollDelay);
@@ -1389,6 +1415,10 @@ public class CoreLoneWolf
                             == SkillEngineMode.ChaosAvengerOptimized
                         )
                             ChaosAvengerOptimizedSkillEngine();
+                        else if (
+                            skillEngineMode == SkillEngineMode.ScionOfFlames
+                        )
+                            ScionOfFlamesSkillEngine();
                         else if (
                             skillEngineMode == SkillEngineMode.Simple
                             && blockedSimpleSkill is >= 1 and <= 4
@@ -1687,6 +1717,25 @@ public class CoreLoneWolf
 
         if (Bot.Target.GetAura("Branded") != null)
             return;
+
+        CustomSkillEngine();
+    }
+
+    private void ScionOfFlamesSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+            return;
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        if (Bot.Self.HasActiveAura("Fuel The Flame"))
+        {
+            if (Bot.Skills.CanUseSkill(4))
+                Bot.Skills.UseSkill(4);
+
+            return;
+        }
 
         CustomSkillEngine();
     }
@@ -2067,7 +2116,11 @@ public class CoreLoneWolf
         Bot.Sleep(750);
     }
 
-    public string GetDivineElixir()
+    public string GetDivineElixir(
+        ClassPreset preset,
+        string roleName,
+        string logPrefix
+    )
     {
         const string divineElixir = "Divine Elixir";
         const string unstableDivineElixir = "Unstable Divine Elixir";
@@ -2107,7 +2160,13 @@ public class CoreLoneWolf
             return unstableDivineElixir;
         }
 
-        if (!Bot.Inventory.Contains(divineElixir) && !Core.HasSpace)
+        if (
+            Bot.Inventory.Contains(divineElixir)
+            || Bot.Bank.Contains(divineElixir)
+        )
+            return divineElixir;
+
+        if (!Core.HasSpace)
         {
             Core.Logger(
                 $"{divineElixir} skipped because no free inventory slot is available.",
@@ -2116,15 +2175,39 @@ public class CoreLoneWolf
             return divineElixir;
         }
 
-        Core.KillMonster(
-            "poisonforest",
-            "r15",
-            "Left",
-            41,
-            divineElixir,
-            10,
-            isTemp: false
-        );
+        bool dropGrabberWasEnabled = Bot.Drops.Enabled;
+
+        try
+        {
+            if (!dropGrabberWasEnabled)
+                Bot.Drops.Start();
+
+            StartSkillEngine(
+                preset.Skills,
+                roleName,
+                taunter: false,
+                logPrefix,
+                preset.SkillMode
+            );
+
+            Core.KillMonster(
+                "poisonforest",
+                "r15",
+                "Left",
+                41,
+                divineElixir,
+                10,
+                isTemp: false
+            );
+        }
+        finally
+        {
+            StopSkillEngine();
+
+            if (!dropGrabberWasEnabled)
+                Bot.Drops.Stop();
+        }
+
         return divineElixir;
     }
 
@@ -5430,6 +5513,7 @@ public enum SkillEngineMode
     ChronoShadowHunterStable,
     ChronoShadowHunterGunslinger,
     ChaosAvengerOptimized,
+    ScionOfFlames,
 }
 
 public class ClassPreset

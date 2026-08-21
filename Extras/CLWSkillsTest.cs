@@ -37,6 +37,7 @@ public class CLWSkillsTest
         Oracle,
         Guardian,
         Chaos_Avenger,
+        Scion_of_Flames,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -257,6 +258,7 @@ public class CLWSkillsTest
             SkillPresetChoice.Chaos_Avenger => LoneWolf.ChaosAvenger(
                 useChaosAvengerOptimizedMode
             ),
+            SkillPresetChoice.Scion_of_Flames => LoneWolf.ScionOfFlames(),
             _ => LoneWolf.LegionRevenant(),
         };
 }

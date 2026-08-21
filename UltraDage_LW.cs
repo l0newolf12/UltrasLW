@@ -165,7 +165,7 @@ public class UltraDage_LW
             : LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(3);
         ClassPreset preset = GetClassPreset();
 
-        Core.Logger($"{LogPrefix} started as {playerAlias}.");
+        Core.Logger($"{LogPrefix} started as {playerAlias} using {armyComposition} composition.");
         LoneWolf.AcceptUltraQuest(UltraQuestId);
 
         if (!Prepare(preset) || !Sync("SETUP_DONE"))

@@ -158,7 +158,7 @@ public class UltraWarden_LW
         if (isTaunter)
             preset.CombatPotion = null;
 
-        Core.Logger($"{LogPrefix} started as {playerAlias}.");
+        Core.Logger($"{LogPrefix} started as {playerAlias} using {armyComposition} composition.");
 
         LoneWolf.AcceptUltraQuest(UltraQuestId);
 

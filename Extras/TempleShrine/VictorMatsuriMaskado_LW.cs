@@ -194,7 +194,7 @@ public class VictorMatsuriMaskado_LW
         LoadBank();
         skipVictorWork = masterMode && OwnsRite();
 
-        Core.Logger($"{LogPrefix} started as {playerAlias}.");
+        Core.Logger($"{LogPrefix} started as {playerAlias} using {armyComposition} composition.");
 
         LoneWolf.EquipClass(preset);
         if (
