@@ -24,6 +24,7 @@ public class UltraDarkon_LW
         Test,
         Test2,
         Test3,
+        Test4,
     }
 
     private enum FightResult
@@ -88,7 +89,7 @@ public class UltraDarkon_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nTest3: Guardian / AP / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nTest3: Guardian / AP / LR / LOO\nTest4: Guardian / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -370,12 +371,18 @@ public class UltraDarkon_LW
             kingsEchoManaThreshold:
                 armyComposition == ArmyComposition.Stable ? 25 : 12,
             blockedSimpleSkill:
-                armyComposition == ArmyComposition.Test3
+                (
+                    armyComposition == ArmyComposition.Test3
+                    || armyComposition == ArmyComposition.Test4
+                )
                 && LoneWolf.IsArmyPlayer(1)
                     ? 4
                     : 0,
             blockedSimpleSkillTargetAura:
-                armyComposition == ArmyComposition.Test3
+                (
+                    armyComposition == ArmyComposition.Test3
+                    || armyComposition == ArmyComposition.Test4
+                )
                 && LoneWolf.IsArmyPlayer(1)
                     ? AMajorAura
                     : string.Empty
@@ -1101,14 +1108,17 @@ public class UltraDarkon_LW
     private bool UsesTestFightBehavior() =>
         armyComposition == ArmyComposition.Test
         || armyComposition == ArmyComposition.Test2
-        || armyComposition == ArmyComposition.Test3;
+        || armyComposition == ArmyComposition.Test3
+        || armyComposition == ArmyComposition.Test4;
 
     private bool IsTaunter() =>
         armyComposition == ArmyComposition.Test3
             ? LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4)
-            : UsesDefaultFightRoles()
-                ? LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
-                : LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(3);
+            : armyComposition == ArmyComposition.Test4
+                ? LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4)
+                : UsesDefaultFightRoles()
+                    ? LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
+                    : LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(3);
 
     private bool IsArchPaladinPlayer() =>
         armyComposition == ArmyComposition.Test3
@@ -1128,7 +1138,10 @@ public class UltraDarkon_LW
 
         if (LoneWolf.IsArmyPlayer(1))
         {
-            if (armyComposition == ArmyComposition.Test3)
+            if (
+                armyComposition == ArmyComposition.Test3
+                || armyComposition == ArmyComposition.Test4
+            )
                 preset = LoneWolf.Guardian();
             else if (armyComposition == ArmyComposition.Test2)
             {

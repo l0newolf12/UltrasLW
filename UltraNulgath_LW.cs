@@ -22,6 +22,8 @@ public class UltraNulgath_LW
         Stable,
         Reliable,
         Optimized,
+        Pay2Win,
+        Fast,
     }
 
     private enum FightResult
@@ -77,7 +79,7 @@ public class UltraNulgath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / SC / LR / LOO\nFast: AI / VDK / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -463,7 +465,11 @@ public class UltraNulgath_LW
 
     private int GetTargetMapId()
     {
-        if (armyComposition == ArmyComposition.Optimized)
+        if (
+            armyComposition == ArmyComposition.Optimized
+            || armyComposition == ArmyComposition.Pay2Win
+            || armyComposition == ArmyComposition.Fast
+        )
             return NulgathMapId;
 
         if (
@@ -587,6 +593,12 @@ public class UltraNulgath_LW
     {
         if (LoneWolf.IsArmyPlayer(1))
         {
+            if (armyComposition == ArmyComposition.Fast)
+                return LoneWolf.ArcanaInvoker();
+
+            if (armyComposition == ArmyComposition.Pay2Win)
+                return LoneWolf.Guardian();
+
             if (armyComposition == ArmyComposition.Optimized)
                 return LoneWolf.DragonOfTime();
 
@@ -599,12 +611,21 @@ public class UltraNulgath_LW
         }
 
         if (LoneWolf.IsArmyPlayer(2))
+        {
+            if (armyComposition == ArmyComposition.Fast)
+                return LoneWolf.VerusDoomKnight();
+
             return armyComposition == ArmyComposition.Optimized
                 ? LoneWolf.DragonOfTime()
                 : LoneWolf.StoneCrusher();
+        }
 
         if (LoneWolf.IsArmyPlayer(3))
-            return armyComposition == ArmyComposition.Optimized
+            return (
+                armyComposition == ArmyComposition.Optimized
+                    || armyComposition == ArmyComposition.Pay2Win
+                    || armyComposition == ArmyComposition.Fast
+            )
                 ? LoneWolf.LegionRevenant()
                 : LoneWolf.ArchPaladin();
 

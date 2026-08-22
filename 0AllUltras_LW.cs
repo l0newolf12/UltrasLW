@@ -194,7 +194,7 @@ public class AllUltras_LW
         new Option<UltraNulgath_LW.ArmyComposition>(
             "UltraNulgathComposition",
             "→ Ultra Nulgath Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / SC / LR / LOO\nFast: AI / VDK / LR / LOO",
             UltraNulgath_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -218,7 +218,7 @@ public class AllUltras_LW
         new Option<UltraDarkon_LW.ArmyComposition>(
             "UltraDarkonComposition",
             "→ Ultra Darkon Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nTest3: Guardian / AP / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nTest3: Guardian / AP / LR / LOO\nTest4: Guardian / SC / AP / LOO",
             UltraDarkon_LW.ArmyComposition.Default
         ),
         new Option<bool>(
