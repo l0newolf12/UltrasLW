@@ -284,6 +284,26 @@ public class CoreLoneWolf
             CombatPotion = "Potent Honor Potion",
         };
 
+    public ClassPreset Arachnomancer() =>
+        new()
+        {
+            ClassName = "Arachnomancer",
+            Skills = new[] { 1, 3, 2, 4 },
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Ravenous,
+            WeaponEnhancementFallbacks = new[]
+            {
+                WeaponSpecial.Praxis,
+                WeaponSpecial.Lacerate,
+                WeaponSpecial.Health_Vamp,
+            },
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
+        };
+
     public ClassPreset VoidHighlord() =>
         new()
         {
@@ -978,7 +998,7 @@ public class CoreLoneWolf
 
     public void RequestAbsolutePrioritySkill(int skill)
     {
-        if (skill is >= 1 and <= 4)
+        if (skill is >= 1 and <= 5)
             Volatile.Write(ref pendingAbsolutePrioritySkill, skill);
     }
 
@@ -4701,7 +4721,7 @@ public class CoreLoneWolf
         return false;
     }
 
-    public bool ShouldResetFight(int fightAttempt)
+    public bool ShouldResetFight(int fightAttempt, int deadPlayerThreshold = 2)
     {
         if (!RequireArmySession())
             return false;
@@ -4797,7 +4817,10 @@ public class CoreLoneWolf
         }
 
         latestAlive[armyUsername] = playerAlive;
-        if (latestAlive.Count(state => !state.Value) < 2 || armyPlayerIndex != 0)
+        if (
+            latestAlive.Count(state => !state.Value) < deadPlayerThreshold
+            || armyPlayerIndex != 0
+        )
             return false;
 
         return AppendArmyRecord(

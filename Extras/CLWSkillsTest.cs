@@ -38,6 +38,7 @@ public class CLWSkillsTest
         Guardian,
         Chaos_Avenger,
         Scion_of_Flames,
+        Arachnomancer,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -259,6 +260,7 @@ public class CLWSkillsTest
                 useChaosAvengerOptimizedMode
             ),
             SkillPresetChoice.Scion_of_Flames => LoneWolf.ScionOfFlames(),
+            SkillPresetChoice.Arachnomancer => LoneWolf.Arachnomancer(),
             _ => LoneWolf.LegionRevenant(),
         };
 }
