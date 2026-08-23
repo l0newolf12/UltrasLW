@@ -20,6 +20,7 @@ public class VoidNightbane_LW
     public enum ArmyComposition
     {
         Default,
+        Reliable,
         Stable,
     }
 
@@ -43,6 +44,7 @@ public class VoidNightbane_LW
     private const string InsatiableHunger = "Insatiable Hunger";
     private const string StarlitJournalPage3Scraps = "Starlit Journal Page 3 Scraps";
     private const string NightbaneEssence = "Nightbane's ??? Essence";
+    private const int NightbaneEssenceId = 73862;
     private const int CelestialSkiesQuestId = 7713;
     private const int WrongTurnQuestId = 9091;
     private const int MinimumLevel = 80;
@@ -55,6 +57,10 @@ public class VoidNightbane_LW
     private int armyPlayerCount;
     private int privateRoomNumber;
     private bool farmNightbane;
+    private bool masterMode;
+    private bool masterStarted;
+    private ClassPreset? masterPreset;
+    private int masterFightCycle = 1;
 
     public string OptionsStorage = "VoidNightbane_LW";
     public bool DontPreconfigure = true;
@@ -88,7 +94,8 @@ public class VoidNightbane_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO / VDK / Bard / Shaman\n"
+            "Default: KE / SC / AP / LOO / VDK / Bard / AF\n"
+                + "Reliable: LR / SC / AP / LOO / VDK / Bard / Shaman\n"
                 + "Stable: KE / SC / AP / LOO / VDK / Bard / AF",
             ArmyComposition.Default
         ),
@@ -134,12 +141,97 @@ public class VoidNightbane_LW
         }
     }
 
+    public bool RunFromMaster()
+    {
+        try
+        {
+            return StartFromMaster() && RunOnceFromMaster();
+        }
+        finally
+        {
+            StopFromMaster();
+        }
+    }
+
+    public bool StartFromMaster()
+    {
+        masterMode = true;
+        masterStarted = false;
+        masterPreset = null;
+        masterFightCycle = 1;
+        Bot.Skills.Stop();
+        Bot.Options.InfiniteRange = true;
+
+        if (!ValidateOptions())
+            return false;
+
+        if (!LoneWolf.StartArmySync(SyncFileName, armyPlayerCount, "Setup"))
+            return false;
+
+        ClassPreset preset = GetClassPreset();
+        if (preset.CapeEnhancement == CapeSpecial.Vainglory)
+            preset.CapeEnhancement = CapeSpecial.Lament;
+
+        if (
+            !LoneWolf.ValidateUltraAccess(
+                0,
+                0,
+                string.Empty,
+                MinimumLevel,
+                LogPrefix,
+                preset.ClassName
+            )
+        )
+            return false;
+
+        playerAlias = GetPlayerAlias();
+        Core.Logger(
+            $"{LogPrefix} started as {playerAlias} using {armyComposition} composition."
+        );
+
+        UpdateDrops();
+
+        if (!Prepare(preset) || !Sync("SETUP_DONE"))
+            return false;
+
+        Core.Join($"{MapName}-{privateRoomNumber}", FightCell, FightPad);
+        if (!PrepareFightRoom(preset) || !Sync("FIGHT_READY"))
+            return false;
+
+        masterPreset = preset;
+        masterStarted = true;
+        return true;
+    }
+
+    public bool RunOnceFromMaster()
+    {
+        if (!masterStarted || masterPreset == null)
+            return false;
+
+        return RunFightLoop(masterPreset, ref masterFightCycle);
+    }
+
+    public void StopFromMaster()
+    {
+        LoneWolf.StopSkillEngine();
+        masterPreset = null;
+        masterStarted = false;
+        masterFightCycle = 1;
+        masterMode = false;
+    }
+
     private void Run()
     {
         if (!ValidateOptions())
             return;
 
-        if (!LoneWolf.StartArmySync(SyncFileName, armyPlayerCount))
+        if (
+            !LoneWolf.StartArmySync(
+                SyncFileName,
+                armyPlayerCount,
+                masterMode ? "Setup" : null
+            )
+        )
             return;
 
         ClassPreset preset = GetClassPreset();
@@ -183,13 +275,18 @@ public class VoidNightbane_LW
 
     private bool ValidateOptions()
     {
-        armyComposition = Bot.Config!.Get<ArmyComposition>("ArmyComposition");
-        privateRoomNumber = Bot.Config.Get<int>("PrivateRoomNumber");
-        farmNightbane = Bot.Config.Get<bool>("FarmNightbane");
+        armyComposition = GetBossOption<ArmyComposition>(
+            "NightbaneComposition",
+            "ArmyComposition"
+        );
+        privateRoomNumber = GetSetupOption<int>("PrivateRoomNumber");
+        farmNightbane = masterMode
+            ? false
+            : Bot.Config!.Get<bool>("FarmNightbane");
 
-        string playerFive = Bot.Config.Get<string>("player5")?.Trim() ?? string.Empty;
-        string playerSix = Bot.Config.Get<string>("player6")?.Trim() ?? string.Empty;
-        string playerSeven = Bot.Config.Get<string>("player7")?.Trim() ?? string.Empty;
+        string playerFive = GetSetupOption<string>("player5")?.Trim() ?? string.Empty;
+        string playerSix = GetSetupOption<string>("player6")?.Trim() ?? string.Empty;
+        string playerSeven = GetSetupOption<string>("player7")?.Trim() ?? string.Empty;
 
         if (
             string.IsNullOrEmpty(playerFive)
@@ -233,7 +330,7 @@ public class VoidNightbane_LW
         if (Bot.ShouldExit)
             return false;
 
-        if (Bot.Config!.Get<bool>("UseEnhancements"))
+        if (GetSetupOption<bool>("UseEnhancements"))
         {
             LoneWolf.PrepareEnhancements(
                 preset.BaseEnhancement,
@@ -244,7 +341,7 @@ public class VoidNightbane_LW
             );
         }
 
-        if (Bot.Config.Get<bool>("UsePotions"))
+        if (GetSetupOption<bool>("UsePotions"))
         {
             LoneWolf.PreparePotions(
                 preset.Tonic,
@@ -287,7 +384,7 @@ public class VoidNightbane_LW
 
     private bool PrepareFightRoom(ClassPreset preset)
     {
-        if (Bot.Config!.Get<bool>("UsePotions"))
+        if (GetSetupOption<bool>("UsePotions"))
         {
             LoneWolf.UsePotions(
                 preset.Tonic,
@@ -302,6 +399,12 @@ public class VoidNightbane_LW
     private bool RunFightLoop(ClassPreset preset)
     {
         int fightCycle = 1;
+
+        return RunFightLoop(preset, ref fightCycle);
+    }
+
+    private bool RunFightLoop(ClassPreset preset, ref int fightCycle)
+    {
         int killCount = 0;
 
         while (!Bot.ShouldExit)
@@ -316,13 +419,14 @@ public class VoidNightbane_LW
                     $"{LogPrefix} {playerAlias} completed kill {killCount}."
                 );
 
+                fightCycle++;
+
                 if (!farmNightbane)
                     return true;
 
                 if (!WaitForRespawn())
                     return false;
 
-                fightCycle++;
                 continue;
             }
 
@@ -449,21 +553,30 @@ public class VoidNightbane_LW
         );
         UpdateDrop(
             NightbaneEssence,
-            Bot.Quests.IsInProgress(WrongTurnQuestId)
+            Bot.Quests.IsInProgress(WrongTurnQuestId),
+            NightbaneEssenceId
         );
+
+        if (!Bot.Drops.Enabled)
+            Bot.Drops.Start();
     }
 
-    private void UpdateDrop(string itemName, bool eligible)
+    private void UpdateDrop(string itemName, bool eligible, int itemId = 0)
     {
         if (eligible && !Bot.Inventory.IsMaxStack(itemName))
         {
             if (!Bot.Drops.ToPickup.Contains(itemName))
                 Core.AddDrop(itemName);
 
+            if (itemId > 0 && !Bot.Drops.ToPickupIDs.Contains(itemId))
+                Core.AddDrop(itemId);
+
             return;
         }
 
         Core.RemoveDrop(itemName);
+        if (itemId > 0)
+            Core.RemoveDrop(itemId);
     }
 
     private void StopFightCombat()
@@ -475,9 +588,9 @@ public class VoidNightbane_LW
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1))
-            return armyComposition == ArmyComposition.Stable
-                ? LoneWolf.KingsEcho()
-                : LoneWolf.LegionRevenant();
+            return armyComposition == ArmyComposition.Reliable
+                ? LoneWolf.LegionRevenant()
+                : LoneWolf.KingsEcho();
 
         if (LoneWolf.IsArmyPlayer(2))
             return LoneWolf.StoneCrusher();
@@ -494,9 +607,9 @@ public class VoidNightbane_LW
         if (LoneWolf.IsArmyPlayer(6))
             return LoneWolf.Bard();
 
-        return armyComposition == ArmyComposition.Stable
-            ? LoneWolf.ArchFiend()
-            : LoneWolf.Shaman();
+        return armyComposition == ArmyComposition.Reliable
+            ? LoneWolf.Shaman()
+            : LoneWolf.ArchFiend();
     }
 
     private string GetPlayerAlias()
@@ -521,6 +634,18 @@ public class VoidNightbane_LW
 
         return "playerSeven";
     }
+
+    private T GetSetupOption<T>(string optionName)
+        where T : IConvertible =>
+        (masterMode
+            ? Bot.Config!.Get<T>("Setup", optionName)
+            : Bot.Config!.Get<T>(optionName))!;
+
+    private T GetBossOption<T>(string masterOptionName, string standaloneOptionName)
+        where T : IConvertible =>
+        (masterMode
+            ? Bot.Config!.Get<T>("Void_Bosses", masterOptionName)
+            : Bot.Config!.Get<T>(standaloneOptionName))!;
 
     private bool Sync(string step)
     {
