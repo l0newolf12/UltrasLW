@@ -509,7 +509,7 @@ public class ArmyPrismatasGoldFarm_LW
     {
         armyComplete = false;
         StopCombat();
-        Core.Join($"{MapName}-{privateRoomNumber}", SafeCell, SafePad);
+        MoveToSafeRoom();
 
         if (!IsLocalGoalComplete())
         {
@@ -520,7 +520,7 @@ public class ArmyPrismatasGoldFarm_LW
                 if (Bot.ShouldExit)
                     return false;
 
-                Core.Join($"{MapName}-{privateRoomNumber}", SafeCell, SafePad);
+                MoveToSafeRoom();
             }
 
             if (Bot.Player.Gold < GoldCap)
@@ -536,7 +536,7 @@ public class ArmyPrismatasGoldFarm_LW
             }
         }
 
-        Core.Join($"{MapName}-{privateRoomNumber}", SafeCell, SafePad);
+        MoveToSafeRoom();
 
         bool localComplete = IsLocalGoalComplete();
         string completionSignal = $"CYCLE_{farmCycle}_COMPLETE";
@@ -566,6 +566,17 @@ public class ArmyPrismatasGoldFarm_LW
 
         Bot.Options.AggroMonsters = true;
         return !Bot.ShouldExit;
+    }
+
+    private void MoveToSafeRoom()
+    {
+        if (string.Equals(Bot.Map.Name, MapName, StringComparison.OrdinalIgnoreCase))
+        {
+            Core.Jump(SafeCell, SafePad);
+            return;
+        }
+
+        Core.Join($"{MapName}-{privateRoomNumber}", SafeCell, SafePad);
     }
 
     private bool SellBindings(int farmCycle)
