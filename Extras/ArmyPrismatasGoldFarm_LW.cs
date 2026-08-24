@@ -40,6 +40,7 @@ public class ArmyPrismatasGoldFarm_LW
     private const string VoucherMap = "alchemyacademy";
     private const int VoucherShopId = 2036;
     private const int VoucherMaxStack = 300;
+    private const int BindingMaxStack = 2500;
     private const int GoldVoucher100kPrice = 100_000;
     private const int GoldVoucher500kPrice = 500_000;
     private const int GoldCap = 100_000_000;
@@ -53,6 +54,7 @@ public class ArmyPrismatasGoldFarm_LW
     private ArmyComposition armyComposition;
     private int armyPlayerCount;
     private int privateRoomNumber;
+    private int bindingSellQuantity;
     private bool farmGoldVouchers;
     private bool antiLagApplied;
     private bool originalLagKiller;
@@ -103,6 +105,12 @@ public class ArmyPrismatasGoldFarm_LW
             "Private Room Number",
             "Private room number from 1001 through 99999.",
             0
+        ),
+        new Option<int>(
+            "BindingSellQuantity",
+            "Binding Sell Quantity",
+            "Sell after every player reaches this many Elemental Bindings. Range: 1 through 2500.",
+            100
         ),
         new Option<bool>(
             "FarmGoldVouchers",
@@ -230,7 +238,7 @@ public class ArmyPrismatasGoldFarm_LW
             if (!FarmBindings(preset, farmCycle))
                 return;
 
-            if (!Sync($"CYCLE_{farmCycle}_MAX"))
+            if (!Sync($"CYCLE_{farmCycle}_SELL_READY"))
                 return;
 
             if (!RunSafeRoomStage(preset, farmCycle, out armyComplete))
@@ -253,7 +261,18 @@ public class ArmyPrismatasGoldFarm_LW
     {
         armyComposition = Bot.Config!.Get<ArmyComposition>("ArmyComposition");
         privateRoomNumber = Bot.Config.Get<int>("PrivateRoomNumber");
+        bindingSellQuantity = Bot.Config.Get<int>("BindingSellQuantity");
         farmGoldVouchers = Bot.Config.Get<bool>("FarmGoldVouchers");
+
+        if (bindingSellQuantity < 1 || bindingSellQuantity > BindingMaxStack)
+        {
+            Core.Logger(
+                $"Binding Sell Quantity must be from 1 through {BindingMaxStack}.",
+                "ValidateOptions",
+                messageBox: true
+            );
+            return false;
+        }
 
         string playerFive = Bot.Config.Get<string>("player5")?.Trim() ?? string.Empty;
         string playerSix = Bot.Config.Get<string>("player6")?.Trim() ?? string.Empty;
@@ -444,11 +463,11 @@ public class ArmyPrismatasGoldFarm_LW
                 Core.Logger($"{LogPrefix} {playerAlias} respawned during cycle {farmCycle}.");
                 deathLogged = false;
 
-                if (!Bot.Inventory.IsMaxStack(ElementalBinding))
+                if (!ReachedBindingSellQuantity())
                     Core.Jump(FightCell, FightPad);
             }
 
-            if (Bot.Inventory.IsMaxStack(ElementalBinding))
+            if (ReachedBindingSellQuantity())
                 break;
 
             int targetMapId = GetCurrentTargetMapId();
@@ -464,10 +483,13 @@ public class ArmyPrismatasGoldFarm_LW
             return false;
 
         Core.Logger(
-            $"{LogPrefix} {playerAlias} reached maximum Elemental Binding for cycle {farmCycle}."
+            $"{LogPrefix} {playerAlias} reached {bindingSellQuantity} Elemental Binding for cycle {farmCycle}."
         );
         return true;
     }
+
+    private bool ReachedBindingSellQuantity() =>
+        Bot.Inventory.GetQuantity(ElementalBinding) >= bindingSellQuantity;
 
     private int GetCurrentTargetMapId()
     {
