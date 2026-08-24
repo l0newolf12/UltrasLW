@@ -443,6 +443,8 @@ public class ArmyPrismatasGoldFarm_LW
             $"{LogPrefix} {playerAlias} started Elemental Binding cycle {farmCycle}."
         );
 
+        string readySignal = $"CYCLE_{farmCycle}_BINDING_READY";
+        bool readySignalSent = false;
         bool deathLogged = false;
         while (!Bot.ShouldExit)
         {
@@ -462,12 +464,21 @@ public class ArmyPrismatasGoldFarm_LW
             {
                 Core.Logger($"{LogPrefix} {playerAlias} respawned during cycle {farmCycle}.");
                 deathLogged = false;
-
-                if (!ReachedBindingSellQuantity())
-                    Core.Jump(FightCell, FightPad);
+                Core.Jump(FightCell, FightPad);
             }
 
-            if (ReachedBindingSellQuantity())
+            if (!readySignalSent && ReachedBindingSellQuantity())
+            {
+                if (!LoneWolf.SendArmySignal(readySignal))
+                    return false;
+
+                readySignalSent = true;
+                Core.Logger(
+                    $"{LogPrefix} {playerAlias} reached {bindingSellQuantity} Elemental Binding for cycle {farmCycle} and is continuing to help."
+                );
+            }
+
+            if (readySignalSent && AllPlayersSignaled(readySignal))
                 break;
 
             int targetMapId = GetCurrentTargetMapId();
@@ -482,9 +493,6 @@ public class ArmyPrismatasGoldFarm_LW
         if (Bot.ShouldExit)
             return false;
 
-        Core.Logger(
-            $"{LogPrefix} {playerAlias} reached {bindingSellQuantity} Elemental Binding for cycle {farmCycle}."
-        );
         return true;
     }
 
