@@ -23,6 +23,7 @@ public class UltraDrakath_LW
         Reliable,
         Optimized,
         Pay2Win,
+        Test,
     }
 
     private enum FightResult
@@ -101,7 +102,7 @@ public class UltraDrakath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nTest: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -402,7 +403,10 @@ public class UltraDrakath_LW
             )
             {
                 int threshold = tauntThresholds[tauntIndex];
-                LoneWolf.RequestTaunt(BossMapId);
+                if (armyComposition == ArmyComposition.Test)
+                    LoneWolf.RequestAbsolutePriorityTaunt(BossMapId);
+                else
+                    LoneWolf.RequestTaunt(BossMapId);
                 tauntIndex++;
                 Core.Logger(
                     $"{LogPrefix} {playerAlias} requested taunt at {threshold} HP."

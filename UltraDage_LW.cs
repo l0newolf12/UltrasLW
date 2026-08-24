@@ -21,6 +21,7 @@ public class UltraDage_LW
         Default,
         Stable,
         Reliable,
+        Test,
     }
 
     private enum FightResult
@@ -80,7 +81,7 @@ public class UltraDage_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nTest: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -483,7 +484,7 @@ public class UltraDage_LW
 
         if (openingOwner)
         {
-            LoneWolf.RequestTaunt(DageMapId);
+            RequestEnrageTaunt();
             Core.Logger($"{LogPrefix} {playerAlias} requested the first Dage taunt.");
         }
 
@@ -520,7 +521,7 @@ public class UltraDage_LW
                 ownsFocusCycle = false;
                 waitingForOwnFocus = true;
                 focusBaseline = GetFocusExpiry();
-                LoneWolf.RequestTaunt(DageMapId);
+                RequestEnrageTaunt();
                 Core.Logger($"{LogPrefix} {playerAlias} owns the next Dage taunt after returning.");
             }
 
@@ -567,7 +568,7 @@ public class UltraDage_LW
                 }
                 else
                 {
-                    LoneWolf.RequestImmediateTaunt(DageMapId);
+                    RequestImmediateEnrageTaunt();
                     Bot.Sleep(FightPollDelay);
                     continue;
                 }
@@ -589,14 +590,14 @@ public class UltraDage_LW
             if (waitingForOwnFocus)
             {
                 if (focus == null)
-                    LoneWolf.RequestImmediateTaunt(DageMapId);
+                    RequestImmediateEnrageTaunt();
             }
             else if (ownsFocusCycle && focus == null)
             {
                 ownsFocusCycle = false;
                 waitingForOwnFocus = true;
                 focusBaseline = DateTimeOffset.MinValue;
-                LoneWolf.RequestImmediateTaunt(DageMapId);
+                RequestImmediateEnrageTaunt();
             }
             else if (
                 ownsFocusCycle
@@ -621,7 +622,7 @@ public class UltraDage_LW
                     nextSignalNumber++;
                     focusBaseline = GetFocusExpiry();
                     waitingForOwnFocus = true;
-                    LoneWolf.RequestTaunt(DageMapId);
+                    RequestEnrageTaunt();
                     Core.Logger($"{LogPrefix} {playerAlias} received {signal} and requested its scheduled Dage taunt.");
                 }
             }
@@ -630,6 +631,22 @@ public class UltraDage_LW
         }
 
         return FightResult.Stopped;
+    }
+
+    private void RequestEnrageTaunt()
+    {
+        if (armyComposition == ArmyComposition.Test)
+            LoneWolf.RequestAbsolutePriorityTaunt(DageMapId);
+        else
+            LoneWolf.RequestTaunt(DageMapId);
+    }
+
+    private void RequestImmediateEnrageTaunt()
+    {
+        if (armyComposition == ArmyComposition.Test)
+            LoneWolf.RequestAbsolutePriorityTaunt(DageMapId);
+        else
+            LoneWolf.RequestImmediateTaunt(DageMapId);
     }
 
     private FightResult FightScrollHolder(int fightAttempt, bool mystifyMode)

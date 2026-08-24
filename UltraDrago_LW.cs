@@ -21,6 +21,7 @@ public class UltraDrago_LW
         Default,
         Stable,
         Reliable,
+        Test,
     }
 
     private enum FightResult
@@ -80,7 +81,7 @@ public class UltraDrago_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nTest: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -549,7 +550,7 @@ public class UltraDrago_LW
                 }
                 else
                 {
-                    LoneWolf.RequestImmediateTaunt(assignedGuardMapId);
+                    RequestImmediateGuardTaunt(assignedGuardMapId);
                     Bot.Sleep(FightPollDelay);
                     continue;
                 }
@@ -572,7 +573,7 @@ public class UltraDrago_LW
                 }
                 else if (focus == null)
                 {
-                    LoneWolf.RequestImmediateTaunt(assignedGuardMapId);
+                    RequestImmediateGuardTaunt(assignedGuardMapId);
                 }
             }
             else if (
@@ -588,7 +589,7 @@ public class UltraDrago_LW
                     ownsFocusCycle = false;
                     waitingForOwnFocus = true;
                     focusBaseline = DateTimeOffset.MinValue;
-                    LoneWolf.RequestImmediateTaunt(assignedGuardMapId);
+                    RequestImmediateGuardTaunt(assignedGuardMapId);
                 }
                 else if (
                     focus.ExpiresAt - DateTimeOffset.Now
@@ -656,8 +657,19 @@ public class UltraDrago_LW
     {
         SelectGuard(guardMapId);
         DateTimeOffset baseline = GetFocusExpiry();
-        LoneWolf.RequestTaunt(guardMapId);
+        if (armyComposition == ArmyComposition.Test)
+            LoneWolf.RequestAbsolutePriorityTaunt(guardMapId);
+        else
+            LoneWolf.RequestTaunt(guardMapId);
         return baseline;
+    }
+
+    private void RequestImmediateGuardTaunt(int guardMapId)
+    {
+        if (armyComposition == ArmyComposition.Test)
+            LoneWolf.RequestAbsolutePriorityTaunt(guardMapId);
+        else
+            LoneWolf.RequestImmediateTaunt(guardMapId);
     }
 
     private void SelectGuard(int guardMapId)

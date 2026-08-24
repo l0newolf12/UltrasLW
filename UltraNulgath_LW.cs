@@ -24,6 +24,7 @@ public class UltraNulgath_LW
         Optimized,
         Pay2Win,
         Fast,
+        Test,
     }
 
     private enum FightResult
@@ -79,7 +80,7 @@ public class UltraNulgath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / SC / LR / LOO\nFast: AI / VDK / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / SC / LR / LOO\nFast: AI / VDK / LR / LOO\nTest: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -161,7 +162,8 @@ public class UltraNulgath_LW
             return;
 
         playerAlias = GetPlayerAlias();
-        isTaunterOne = armyComposition == ArmyComposition.Default
+        isTaunterOne = armyComposition
+            is ArmyComposition.Default or ArmyComposition.Test
             ? LoneWolf.IsArmyPlayer(1)
             : LoneWolf.IsArmyPlayer(3);
         isTaunter = isTaunterOne || LoneWolf.IsArmyPlayer(4);
@@ -403,7 +405,7 @@ public class UltraNulgath_LW
             if (now < tauntAt)
                 return;
 
-            LoneWolf.RequestTaunt(NulgathMapId);
+            RequestNulgathTaunt();
 
             if (openingTaunt)
             {
@@ -451,7 +453,7 @@ public class UltraNulgath_LW
         if (now < tauntAt)
             return true;
 
-        LoneWolf.RequestTaunt(NulgathMapId);
+        RequestNulgathTaunt();
         string signal = GetAbyssTauntSignalName(fightAttempt, abyssCycle);
 
         if (!LoneWolf.SendArmySignal(signal))
@@ -505,6 +507,14 @@ public class UltraNulgath_LW
             && bladeHealth > BladeHealthThreshold
                 ? BladeMapId
                 : NulgathMapId;
+    }
+
+    private void RequestNulgathTaunt()
+    {
+        if (armyComposition == ArmyComposition.Test)
+            LoneWolf.RequestAbsolutePriorityTaunt(NulgathMapId);
+        else
+            LoneWolf.RequestTaunt(NulgathMapId);
     }
 
     private static string GetAbyssTauntSignalName(

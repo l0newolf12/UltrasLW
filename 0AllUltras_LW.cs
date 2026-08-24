@@ -130,7 +130,7 @@ public class AllUltras_LW
         new Option<UltraWarden_LW.ArmyComposition>(
             "UltraWardenComposition",
             "→ Ultra Warden Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nTest: LR / SC / AP / LOO",
             UltraWarden_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -154,7 +154,7 @@ public class AllUltras_LW
         new Option<UltraTyndarius_LW.ArmyComposition>(
             "UltraTyndariusComposition",
             "→ Ultra Tyndarius Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: LR / SC / AP / LOO",
             UltraTyndarius_LW.ArmyComposition.Default
         ),
     };
@@ -170,7 +170,7 @@ public class AllUltras_LW
         new Option<UltraDrakath_LW.ArmyComposition>(
             "ChampionDrakathComposition",
             "→ Champion Drakath Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nTest: LR / SC / AP / LOO",
             UltraDrakath_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -182,7 +182,7 @@ public class AllUltras_LW
         new Option<UltraDrago_LW.ArmyComposition>(
             "UltraDragoComposition",
             "→ Ultra Drago Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nTest: LR / SC / AP / LOO",
             UltraDrago_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -194,7 +194,7 @@ public class AllUltras_LW
         new Option<UltraNulgath_LW.ArmyComposition>(
             "UltraNulgathComposition",
             "→ Ultra Nulgath Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / SC / LR / LOO\nFast: AI / VDK / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / SC / LR / LOO\nFast: AI / VDK / LR / LOO\nTest: LR / SC / AP / LOO",
             UltraNulgath_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -206,7 +206,7 @@ public class AllUltras_LW
         new Option<UltraDage_LW.ArmyComposition>(
             "UltraDageComposition",
             "→ Ultra Dage Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nTest: LR / SC / AP / LOO",
             UltraDage_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -218,7 +218,7 @@ public class AllUltras_LW
         new Option<UltraDarkon_LW.ArmyComposition>(
             "UltraDarkonComposition",
             "→ Ultra Darkon Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nTest3: Guardian / AP / LR / LOO\nTest4: Guardian / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO",
             UltraDarkon_LW.ArmyComposition.Default
         ),
         new Option<bool>(

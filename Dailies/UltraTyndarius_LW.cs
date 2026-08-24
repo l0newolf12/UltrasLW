@@ -23,6 +23,7 @@ public class UltraTyndarius_LW
         Reliable,
         Fast,
         Test,
+        Test2,
     }
 
     private enum FightResult
@@ -79,7 +80,7 @@ public class UltraTyndarius_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -532,7 +533,7 @@ public class UltraTyndarius_LW
 
         if (isArchPaladin)
         {
-            LoneWolf.RequestTaunt(MainBossMapId);
+            RequestBossTaunt(immediate: false);
             Core.Logger($"{LogPrefix} playerThree requested the first boss taunt.");
         }
 
@@ -553,7 +554,7 @@ public class UltraTyndarius_LW
                 ownsFocusCycle = false;
                 waitingForOwnFocus = true;
                 focusBaseline = GetFocusExpiry();
-                LoneWolf.RequestTaunt(MainBossMapId);
+                RequestBossTaunt(immediate: false);
                 Core.Logger($"{LogPrefix} {playerAlias} owns the next boss taunt after returning.");
             }
 
@@ -597,7 +598,7 @@ public class UltraTyndarius_LW
                 }
                 else
                 {
-                    LoneWolf.RequestImmediateTaunt(MainBossMapId);
+                    RequestBossTaunt(immediate: true);
                     Bot.Sleep(FightPollDelay);
                     continue;
                 }
@@ -619,7 +620,7 @@ public class UltraTyndarius_LW
             if (waitingForOwnFocus)
             {
                 if (focus == null)
-                    LoneWolf.RequestImmediateTaunt(MainBossMapId);
+                    RequestBossTaunt(immediate: true);
             }
             else if (
                 ownsFocusCycle
@@ -629,7 +630,7 @@ public class UltraTyndarius_LW
                 ownsFocusCycle = false;
                 waitingForOwnFocus = true;
                 focusBaseline = DateTimeOffset.MinValue;
-                LoneWolf.RequestImmediateTaunt(MainBossMapId);
+                RequestBossTaunt(immediate: true);
             }
             else if (
                 ownsFocusCycle
@@ -660,7 +661,7 @@ public class UltraTyndarius_LW
                     nextSignalNumber++;
                     focusBaseline = GetFocusExpiry();
                     waitingForOwnFocus = true;
-                    LoneWolf.RequestTaunt(MainBossMapId);
+                    RequestBossTaunt(immediate: false);
                     Core.Logger($"{LogPrefix} {playerAlias} received {signal} and requested its scheduled boss taunt.");
                 }
             }
@@ -669,6 +670,16 @@ public class UltraTyndarius_LW
         }
 
         return FinishFight(FightResult.Stopped);
+    }
+
+    private void RequestBossTaunt(bool immediate)
+    {
+        if (armyComposition == ArmyComposition.Test2)
+            LoneWolf.RequestAbsolutePriorityTaunt(MainBossMapId);
+        else if (immediate)
+            LoneWolf.RequestImmediateTaunt(MainBossMapId);
+        else
+            LoneWolf.RequestTaunt(MainBossMapId);
     }
 
     private static string GetTauntSignalName(
@@ -899,7 +910,8 @@ public class UltraTyndarius_LW
 
     private bool UsesDefaultFightRoles() =>
         armyComposition == ArmyComposition.Default
-        || armyComposition == ArmyComposition.Reliable;
+        || armyComposition == ArmyComposition.Reliable
+        || armyComposition == ArmyComposition.Test2;
 
     private bool IsTaunterRole() =>
         UsesDefaultFightRoles()
