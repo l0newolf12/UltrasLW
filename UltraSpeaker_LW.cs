@@ -1211,7 +1211,7 @@ public class UltraSpeaker_LW
         Bot.Player.Cell == BossCell && Bot.Player.Pad == BossPad;
 
     private bool IsInSafeRoom() =>
-        Bot.Player.Cell == SafeCell && Bot.Player.Pad == SafePad;
+        string.Equals(Bot.Player.Cell, SafeCell, StringComparison.OrdinalIgnoreCase);
 
     private string GetWarningName(string warning) =>
         string.Equals(warning, TruthMessage, StringComparison.Ordinal)

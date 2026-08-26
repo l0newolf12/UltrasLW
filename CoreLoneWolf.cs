@@ -57,6 +57,7 @@ public class CoreLoneWolf
     private const string ChronoShadowHunterRoundsEmptyAura = "Rounds Empty";
     private const string ChronoShadowHunterGunslingerAura = "Gunslinger Stance";
     private const string GuardianSpiritAura = "Guardian Spirit";
+    private static readonly int[] SSOTLoopSkills = { 4, 2, 3, 1, 2, 1 };
 
     private enum PotionCategory
     {
@@ -136,6 +137,7 @@ public class CoreLoneWolf
     private bool useSurvivalSkill = true;
     private string? maintainedPotion;
     private int kingsEchoManaThreshold = 12;
+    private bool ssotOpeningComplete;
     private int blockedStrictSkill;
     private string blockedStrictSkillSelfAura = string.Empty;
     private string blockedStrictSkillTargetAura = string.Empty;
@@ -302,6 +304,40 @@ public class CoreLoneWolf
             Tonic = "Fate Tonic",
             Elixir = "Potent Battle Elixir",
             CombatPotion = "Felicitous Philtre",
+        };
+
+    public ClassPreset ImperialChunin() =>
+        new()
+        {
+            ClassName = "Imperial Chunin",
+            Skills = new[] { 2, 3, 1, 4 },
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Lament,
+            HelmEnhancement = HelmSpecial.Vim,
+            WeaponEnhancement = WeaponSpecial.Valiance,
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
+        };
+
+    public ClassPreset SSOT() =>
+        new()
+        {
+            ClassName = "ShadowStalker of Time",
+            AlternateClassNames = new[]
+            {
+                "ShadowWalker of Time",
+                "ShadowWeaver of Time",
+            },
+            Skills = new[] { 3, 2, 1, 4, 2, 1, 2, 1 },
+            SkillMode = SkillEngineMode.ShadowStalkerOfTime,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Vim,
+            WeaponEnhancement = WeaponSpecial.Elysium,
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Malevolence Elixir",
+            CombatPotion = "Potent Honor Potion",
         };
 
     public ClassPreset VoidHighlord() =>
@@ -672,6 +708,15 @@ public class CoreLoneWolf
         }
 
         Core.Equip(className);
+        Bot.Wait.ForTrue(
+            () =>
+                string.Equals(
+                    Bot.Player.CurrentClass?.Name,
+                    className,
+                    StringComparison.OrdinalIgnoreCase
+                ),
+            40
+        );
 
         if (
             string.Equals(
@@ -778,6 +823,8 @@ public class CoreLoneWolf
         this.blockedSimpleSkill = blockedSimpleSkill;
         this.blockedSimpleSkillTargetAura = blockedSimpleSkillTargetAura;
         skillIndex = 0;
+        if (mode == SkillEngineMode.ShadowStalkerOfTime)
+            ResetSSOT();
         if (mode == SkillEngineMode.ChronoShadowHunterStable)
             ResetCSSNormalMode();
         if (mode == SkillEngineMode.ChronoShadowHunterGunslinger)
@@ -1182,6 +1229,9 @@ public class CoreLoneWolf
             {
                 if (!Bot.Player.Alive)
                 {
+                    if (skillEngineMode == SkillEngineMode.ShadowStalkerOfTime)
+                        ResetSSOT();
+
                     if (
                         skillEngineMode is SkillEngineMode.Simple
                             or SkillEngineMode.LightCasterHealing
@@ -1443,6 +1493,10 @@ public class CoreLoneWolf
                             ScionOfFlamesSkillEngine();
                         else if (skillEngineMode == SkillEngineMode.Guardian)
                             GuardianSkillEngine();
+                        else if (
+                            skillEngineMode == SkillEngineMode.ShadowStalkerOfTime
+                        )
+                            SSOTSkillEngine();
                         else if (
                             skillEngineMode == SkillEngineMode.Simple
                             && blockedSimpleSkill is >= 1 and <= 4
@@ -1892,6 +1946,36 @@ public class CoreLoneWolf
             return;
 
         index = (index + 1) % skills.Length;
+    }
+
+    private void ResetSSOT()
+    {
+        ssotOpeningComplete = false;
+        skillIndex = 0;
+    }
+
+    private void SSOTSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+        {
+            ResetSSOT();
+            return;
+        }
+
+        if (ssotOpeningComplete)
+        {
+            StrictSkillEngine(SSOTLoopSkills, ref skillIndex);
+            return;
+        }
+
+        if (skillList.Length == 0)
+            return;
+
+        bool finalOpeningSkill = skillIndex == skillList.Length - 1;
+        StrictSkillEngine(skillList, ref skillIndex);
+
+        if (finalOpeningSkill && skillIndex == 0)
+            ssotOpeningComplete = true;
     }
 
     public void KingsEchoSkillEngine(bool useSurvivalSkill)
@@ -5585,6 +5669,7 @@ public enum SkillEngineMode
     ChaosAvengerOptimized,
     ScionOfFlames,
     Guardian,
+    ShadowStalkerOfTime,
 }
 
 public class ClassPreset

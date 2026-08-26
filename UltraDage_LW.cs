@@ -1046,7 +1046,7 @@ public class UltraDage_LW
         Bot.Player.Cell == BossCell && Bot.Player.Pad == BossPad;
 
     private bool IsInSafeRoom() =>
-        Bot.Player.Cell == SafeCell && Bot.Player.Pad == SafePad;
+        string.Equals(Bot.Player.Cell, SafeCell, StringComparison.OrdinalIgnoreCase);
 
     private ClassPreset GetClassPreset()
     {

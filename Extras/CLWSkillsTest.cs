@@ -39,6 +39,8 @@ public class CLWSkillsTest
         Chaos_Avenger,
         Scion_of_Flames,
         Arachnomancer,
+        Imperial_Chunin,
+        SSOT,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -261,6 +263,8 @@ public class CLWSkillsTest
             ),
             SkillPresetChoice.Scion_of_Flames => LoneWolf.ScionOfFlames(),
             SkillPresetChoice.Arachnomancer => LoneWolf.Arachnomancer(),
+            SkillPresetChoice.Imperial_Chunin => LoneWolf.ImperialChunin(),
+            SkillPresetChoice.SSOT => LoneWolf.SSOT(),
             _ => LoneWolf.LegionRevenant(),
         };
 }

@@ -874,7 +874,7 @@ public class UltraTyndarius_LW
     }
 
     private bool IsInSafeRoom() =>
-        Bot.Player.Cell == SafeCell && Bot.Player.Pad == SafePad;
+        string.Equals(Bot.Player.Cell, SafeCell, StringComparison.OrdinalIgnoreCase);
 
     private T GetSetupOption<T>(string optionName)
         where T : IConvertible =>
