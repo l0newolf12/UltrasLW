@@ -18,12 +18,11 @@ public class UltraDarkon_LW
 {
     public enum ArmyComposition
     {
-        Default,
-        Stable,
-        Optimized,
-        Test,
-        Test2,
-        Pay2Win,
+        Default = 0,
+        Stable = 1,
+        Reliable = 2,
+        Optimized = 3,
+        Pay2Win = 4,
     }
 
     private enum FightResult
@@ -60,8 +59,6 @@ public class UltraDarkon_LW
     private const int LooHoldHealth = 10_000_000;
     private const int LooReleaseHealth = 4_500_000;
     private const int TauntDelay = 1250;
-    private const int LooExtraHealWindowStartDelay = 6000;
-    private const int LooExtraHealWindowDuration = 500;
     private const int ApExtraHealWindowStartDelay = 5000;
     private const int ApExtraHealWindowDuration = 1500;
     private const int RequiredHealDelay = 250;
@@ -88,7 +85,7 @@ public class UltraDarkon_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -323,11 +320,9 @@ public class UltraDarkon_LW
 
     private bool StartDarkonPacketDetector()
     {
-        bool detectsAttack2 = UsesTestFightBehavior()
-            ? LoneWolf.IsArmyPlayer(3)
-            : UsesDefaultFightRoles()
-                ? LoneWolf.IsArmyPlayer(4)
-                : LoneWolf.IsArmyPlayer(1);
+        bool detectsAttack2 = UsesRelayedAttack2()
+            ? LoneWolf.IsArmyPlayer(1)
+            : IsArchPaladinPlayer();
         string animationMarker = detectsAttack2
             ? Attack2Marker
             : Attack3Marker;
@@ -388,19 +383,16 @@ public class UltraDarkon_LW
         int nextDetection = 1;
         int nextAttack2Signal = 1;
         int scheduledTauntCycle = 0;
-        int looExtraHealCycle = 0;
         int apExtraHealCycle = 0;
         int delayedHealCycle = 0;
         string delayedHealAttack = string.Empty;
         DateTimeOffset tauntAt = DateTimeOffset.MinValue;
-        DateTimeOffset looExtraHealWindowStart = DateTimeOffset.MinValue;
         DateTimeOffset apExtraHealWindowStart = DateTimeOffset.MinValue;
         DateTimeOffset delayedHealAt = DateTimeOffset.MinValue;
         bool apPhaseThreeConfigured = false;
         bool apSkillThreeBlocked = false;
-        bool handlesAttack2Signals = !UsesDefaultFightRoles()
-            && !UsesTestFightBehavior()
-            && LoneWolf.IsArmyPlayer(4);
+        bool handlesAttack2Signals = UsesRelayedAttack2()
+            && IsArchPaladinPlayer();
 
         while (!Bot.ShouldExit)
         {
@@ -420,8 +412,6 @@ public class UltraDarkon_LW
                 Core.Logger($"{LogPrefix} {playerAlias} died.");
                 tauntScheduled = false;
                 looSkillFourRequested = false;
-                looExtraHealCycle = 0;
-                looExtraHealWindowStart = DateTimeOffset.MinValue;
                 apExtraHealCycle = 0;
                 apExtraHealWindowStart = DateTimeOffset.MinValue;
                 delayedHealCycle = 0;
@@ -482,8 +472,6 @@ public class UltraDarkon_LW
                 ref tauntScheduled,
                 ref scheduledTauntCycle,
                 ref tauntAt,
-                ref looExtraHealCycle,
-                ref looExtraHealWindowStart,
                 ref apExtraHealCycle,
                 ref apExtraHealWindowStart,
                 ref delayedHealCycle,
@@ -499,8 +487,8 @@ public class UltraDarkon_LW
                 HandleAttack2Signals(
                     fightAttempt,
                     ref nextAttack2Signal,
-                    ref looExtraHealCycle,
-                    ref looExtraHealWindowStart,
+                    ref apExtraHealCycle,
+                    ref apExtraHealWindowStart,
                     ref delayedHealCycle,
                     ref delayedHealAttack,
                     ref delayedHealAt
@@ -517,10 +505,7 @@ public class UltraDarkon_LW
                 ref apSkillThreeBlocked
             );
 
-            if (
-                UsesTestFightBehavior()
-                && IsArchPaladinPlayer()
-            )
+            if (IsArchPaladinPlayer())
                 TryQueueApExtraHeal(
                     apPhaseThreeConfigured,
                     ref apExtraHealCycle,
@@ -529,16 +514,22 @@ public class UltraDarkon_LW
 
             if (tauntScheduled && DateTimeOffset.Now >= tauntAt)
             {
-                LoneWolf.RequestTaunt(DarkonMapId);
-                Core.Logger($"{LogPrefix} {playerAlias} requested Darkon taunt cycle {scheduledTauntCycle}.");
-                tauntScheduled = false;
-            }
+                bool waitsForLooSkillFour =
+                    armyComposition == ArmyComposition.Pay2Win
+                    && LoneWolf.IsArmyPlayer(4)
+                    && (
+                        looSkillFourRequested
+                        || LoneWolf.HasPendingAbsolutePrioritySkill()
+                    );
 
-            if (LoneWolf.IsArmyPlayer(4))
-                TryQueueLooExtraHeal(
-                    ref looExtraHealCycle,
-                    ref looExtraHealWindowStart
-                );
+                if (!waitsForLooSkillFour)
+                {
+                    LoneWolf.RequestAbsolutePriorityTaunt(DarkonMapId);
+
+                    Core.Logger($"{LogPrefix} {playerAlias} requested Darkon taunt cycle {scheduledTauntCycle}.");
+                    tauntScheduled = false;
+                }
+            }
 
             if (LoneWolf.IsArmyPlayer(4))
                 UseLooSkillFourNormally(looSkillFourReleased);
@@ -561,8 +552,6 @@ public class UltraDarkon_LW
         ref bool tauntScheduled,
         ref int scheduledTauntCycle,
         ref DateTimeOffset tauntAt,
-        ref int looExtraHealCycle,
-        ref DateTimeOffset looExtraHealWindowStart,
         ref int apExtraHealCycle,
         ref DateTimeOffset apExtraHealWindowStart,
         ref int delayedHealCycle,
@@ -575,7 +564,7 @@ public class UltraDarkon_LW
             int cycle = nextDetection++;
 
             if (
-                UsesTestFightBehavior()
+                !UsesRelayedAttack2()
                 && IsArchPaladinPlayer()
             )
             {
@@ -595,8 +584,7 @@ public class UltraDarkon_LW
             }
 
             if (
-                !UsesDefaultFightRoles()
-                && !UsesTestFightBehavior()
+                UsesRelayedAttack2()
                 && LoneWolf.IsArmyPlayer(1)
             )
             {
@@ -616,15 +604,6 @@ public class UltraDarkon_LW
                 continue;
             }
 
-            if (IsArchPaladinPlayer())
-                SchedulePacketHeal(
-                    "Attack3",
-                    cycle,
-                    ref delayedHealCycle,
-                    ref delayedHealAttack,
-                    ref delayedHealAt
-                );
-
             if (isTaunter)
             {
                 bool openingOwner = IsOpeningTauntOwner();
@@ -640,7 +619,7 @@ public class UltraDarkon_LW
                     Core.Logger($"{LogPrefix} {playerAlias} detected owned Attack3 cycle {cycle}.");
                 }
             }
-            if (UsesTestFightBehavior() && LoneWolf.IsArmyPlayer(4))
+            if (LoneWolf.IsArmyPlayer(4))
             {
                 if (cycle == 1 || cycle % 2 == 0)
                     SchedulePacketHeal(
@@ -650,24 +629,6 @@ public class UltraDarkon_LW
                         ref delayedHealAttack,
                         ref delayedHealAt
                     );
-            }
-            else if (
-                UsesDefaultFightRoles()
-                && LoneWolf.IsArmyPlayer(4)
-            )
-            {
-                SchedulePacketHeal(
-                    "Attack2",
-                    cycle,
-                    ref delayedHealCycle,
-                    ref delayedHealAttack,
-                    ref delayedHealAt
-                );
-                ScheduleLooExtraHeal(
-                    cycle,
-                    ref looExtraHealCycle,
-                    ref looExtraHealWindowStart
-                );
             }
         }
 
@@ -698,7 +659,7 @@ public class UltraDarkon_LW
                 ref delayedHealAttack,
                 ref delayedHealAt
             );
-            ScheduleLooExtraHeal(
+            ScheduleApExtraHeal(
                 nextSignal,
                 ref extraHealCycle,
                 ref extraHealWindowStart
@@ -766,55 +727,6 @@ public class UltraDarkon_LW
         windowStart = DateTimeOffset.MinValue;
         LoneWolf.RequestPrioritySkill(2);
         Core.Logger($"{LogPrefix} {playerAlias} queued its optional Attack2 heal for cycle {scheduledCycle}.");
-    }
-
-    private void ScheduleLooExtraHeal(
-        int cycle,
-        ref int extraHealCycle,
-        ref DateTimeOffset extraHealWindowStart
-    )
-    {
-        extraHealCycle = cycle;
-        extraHealWindowStart = DateTimeOffset.Now.AddMilliseconds(
-            LooExtraHealWindowStartDelay
-        );
-    }
-
-    private void TryQueueLooExtraHeal(
-        ref int cycle,
-        ref DateTimeOffset windowStart
-    )
-    {
-        if (cycle <= 0)
-            return;
-
-        DateTimeOffset now = DateTimeOffset.Now;
-        if (now < windowStart)
-            return;
-
-        if (
-            now >= windowStart.AddMilliseconds(
-                LooExtraHealWindowDuration
-            )
-        )
-        {
-            cycle = 0;
-            windowStart = DateTimeOffset.MinValue;
-            return;
-        }
-
-        if (
-            !Bot.Player.Alive
-            || LoneWolf.HasPendingPrioritySkill()
-            || !Bot.Skills.CanUseSkill(2)
-        )
-            return;
-
-        int scheduledCycle = cycle;
-        cycle = 0;
-        windowStart = DateTimeOffset.MinValue;
-        LoneWolf.RequestPrioritySkill(2);
-        Core.Logger($"{LogPrefix} {playerAlias} queued its extra Attack2 heal for cycle {scheduledCycle}.");
     }
 
     private void SchedulePacketHeal(
@@ -1091,27 +1003,25 @@ public class UltraDarkon_LW
     private bool IsInBossRoom() =>
         Bot.Player.Cell == BossCell && Bot.Player.Pad == BossPad;
 
-    private bool UsesDefaultFightRoles() =>
+    private bool UsesPlayerOneAndTwoTaunters() =>
         armyComposition == ArmyComposition.Default
-        || armyComposition == ArmyComposition.Test
-        || armyComposition == ArmyComposition.Test2;
+        || armyComposition == ArmyComposition.Reliable;
 
-    private bool UsesTestFightBehavior() =>
-        armyComposition == ArmyComposition.Test
-        || armyComposition == ArmyComposition.Test2
-        || armyComposition == ArmyComposition.Pay2Win;
+    private bool UsesRelayedAttack2() =>
+        armyComposition == ArmyComposition.Stable
+        || armyComposition == ArmyComposition.Optimized;
 
     private bool IsTaunter() =>
         armyComposition == ArmyComposition.Pay2Win
             ? LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4)
-            : UsesDefaultFightRoles()
+            : UsesPlayerOneAndTwoTaunters()
                 ? LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
                 : LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(3);
 
     private bool IsArchPaladinPlayer() => LoneWolf.IsArmyPlayer(3);
 
     private bool IsOpeningTauntOwner() =>
-        UsesDefaultFightRoles()
+        UsesPlayerOneAndTwoTaunters()
             ? LoneWolf.IsArmyPlayer(1)
             : LoneWolf.IsArmyPlayer(2);
 
@@ -1123,7 +1033,7 @@ public class UltraDarkon_LW
         {
             if (armyComposition == ArmyComposition.Pay2Win)
                 preset = LoneWolf.Guardian();
-            else if (armyComposition == ArmyComposition.Test2)
+            else if (armyComposition == ArmyComposition.Reliable)
             {
                 preset = LoneWolf.VerusDoomKnight();
                 preset.CapeEnhancement = CapeSpecial.Penitence;

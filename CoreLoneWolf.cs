@@ -2739,12 +2739,14 @@ public class CoreLoneWolf
     ) =>
         category switch
         {
-            PotionCategory.Tonic => itemName is "Might Tonic" or "Sage Tonic" or "Fate Tonic",
+            PotionCategory.Tonic =>
+                itemName is "Might Tonic" or "Sage Tonic" or "Fate Tonic" or "Body Tonic",
             PotionCategory.Elixir =>
                 itemName
                     is "Potent Battle Elixir"
                     or "Potent Malevolence Elixir"
                     or "Potent Destruction Elixir"
+                    or "Potent Revitalize Elixir"
                     or "Divine Elixir"
                     or "Unstable Divine Elixir",
             PotionCategory.CombatPotion =>
@@ -2767,6 +2769,7 @@ public class CoreLoneWolf
             "Sage Tonic" => "Sage",
             "Might Tonic" => "Might",
             "Fate Tonic" => "Fate",
+            "Body Tonic" => "Body",
             "Potent Honor Potion" => "Potent Honor Malice",
             "Felicitous Philtre" => "Felicitous Philtre",
             _ => itemName,
@@ -2793,6 +2796,7 @@ public class CoreLoneWolf
         {
             case "Sage Tonic":
             case "Might Tonic":
+            case "Body Tonic":
                 voucherQuantity = 2;
                 potionQuantity = 10;
                 factionName = "Alchemy";
@@ -2813,6 +2817,7 @@ public class CoreLoneWolf
                 return true;
 
             case "Potent Destruction Elixir":
+            case "Potent Revitalize Elixir":
                 voucherQuantity = 2;
                 potionQuantity = 8;
                 return true;

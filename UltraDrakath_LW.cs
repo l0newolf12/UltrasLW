@@ -23,7 +23,6 @@ public class UltraDrakath_LW
         Reliable,
         Optimized,
         Pay2Win,
-        Test,
     }
 
     private enum FightResult
@@ -102,7 +101,7 @@ public class UltraDrakath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -200,19 +199,22 @@ public class UltraDrakath_LW
             else if (LoneWolf.IsArmyPlayer(4))
                 preset.CombatPotion = "Felicitous Philtre";
         }
-        else if (
-            LoneWolf.IsArmyPlayer(3)
-            || (
-                (
-                    armyComposition == ArmyComposition.Default
-                    || armyComposition == ArmyComposition.Reliable
+        else
+        {
+            if (
+                LoneWolf.IsArmyPlayer(3)
+                || (
+                    (
+                        armyComposition == ArmyComposition.Default
+                        || armyComposition == ArmyComposition.Reliable
+                    )
+                    && LoneWolf.IsArmyPlayer(1)
                 )
-                && LoneWolf.IsArmyPlayer(1)
             )
-        )
-            preset.CapeEnhancement = CapeSpecial.Penitence;
-        else if (preset.CapeEnhancement == CapeSpecial.Vainglory)
-            preset.CapeEnhancement = CapeSpecial.Lament;
+                preset.CapeEnhancement = CapeSpecial.Penitence;
+            else if (preset.CapeEnhancement == CapeSpecial.Vainglory)
+                preset.CapeEnhancement = CapeSpecial.Lament;
+        }
 
         if (isTaunter)
             preset.CombatPotion = null;
@@ -403,10 +405,7 @@ public class UltraDrakath_LW
             )
             {
                 int threshold = tauntThresholds[tauntIndex];
-                if (armyComposition == ArmyComposition.Test)
-                    LoneWolf.RequestAbsolutePriorityTaunt(BossMapId);
-                else
-                    LoneWolf.RequestTaunt(BossMapId);
+                LoneWolf.RequestAbsolutePriorityTaunt(BossMapId);
                 tauntIndex++;
                 Core.Logger(
                     $"{LogPrefix} {playerAlias} requested taunt at {threshold} HP."
@@ -505,16 +504,18 @@ public class UltraDrakath_LW
         if (LoneWolf.IsArmyPlayer(2))
             return armyComposition switch
             {
-                ArmyComposition.Stable or ArmyComposition.Pay2Win =>
-                    AdjustedStoneCrusherTauntThresholds,
+                ArmyComposition.Stable
+                    or ArmyComposition.Pay2Win
+                    => AdjustedStoneCrusherTauntThresholds,
                 _ => StoneCrusherTauntThresholds,
             };
 
         if (LoneWolf.IsArmyPlayer(3))
             return armyComposition switch
             {
-                ArmyComposition.Stable or ArmyComposition.Pay2Win =>
-                    AdjustedArchPaladinTauntThresholds,
+                ArmyComposition.Stable
+                    or ArmyComposition.Pay2Win
+                    => AdjustedArchPaladinTauntThresholds,
                 _ => ArchPaladinTauntThresholds,
             };
 
@@ -534,9 +535,11 @@ public class UltraDrakath_LW
             };
 
         if (LoneWolf.IsArmyPlayer(2))
-            return armyComposition == ArmyComposition.Pay2Win
-                ? LoneWolf.ArchPaladin()
-                : LoneWolf.StoneCrusher();
+            return armyComposition switch
+            {
+                ArmyComposition.Pay2Win => LoneWolf.ArchPaladin(),
+                _ => LoneWolf.StoneCrusher(),
+            };
 
         if (LoneWolf.IsArmyPlayer(3))
             return armyComposition == ArmyComposition.Pay2Win

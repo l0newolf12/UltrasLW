@@ -26,12 +26,9 @@ public class UltraSpeaker_LW
 
     public enum ArmyComposition
     {
-        Default,
-        Stable,
-        Pay2Win,
-        Test,
-        Test2,
-        Test3,
+        Default = 0,
+        Stable = 1,
+        Pay2Win = 2,
     }
 
     private sealed class SpeakerStep
@@ -180,7 +177,7 @@ public class UltraSpeaker_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: LR / SC / AP / LOO\nTest2: VDK / SC / AP / LOO\nTest3: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -428,7 +425,7 @@ public class UltraSpeaker_LW
                 "ct",
                 new[] { TruthMessage, ListenMessage },
                 pauseSkillChoice: ListenMessage,
-                pauseEveryChoice: UsesAllFreshAbsolutePriorityTaunts()
+                pauseEveryChoice: true
             )
         )
         {
@@ -486,22 +483,9 @@ public class UltraSpeaker_LW
         bool chartResetSent = false;
         int nextChartFailureSender = 1;
         bool righteousSealSkillFourQueued = false;
-        int nextTestHealClearCycle = 1;
         ZoneState zoneState = new();
 
         StartInitialMovement(zoneState);
-
-        if (
-            armyComposition == ArmyComposition.Test
-            && !bruteForceMethod
-            && LoneWolf.IsArmyPlayer(GetArchPaladinPlayer())
-        )
-        {
-            LoneWolf.RequestLimitedPrioritySkill(2, 2);
-            Core.Logger(
-                $"{LogPrefix} {playerAlias} started with 2 unlocked heals."
-            );
-        }
 
         Core.Logger($"{LogPrefix} {playerAlias} started fighting attempt {fightAttempt}.");
 
@@ -574,11 +558,6 @@ public class UltraSpeaker_LW
 
             if (HasChartResetSignal(fightAttempt))
                 return FightResult.Reset;
-
-            ProcessTestHealClearSignals(
-                fightAttempt,
-                ref nextTestHealClearCycle
-            );
 
             if (!Bot.Player.Alive)
             {
@@ -666,29 +645,12 @@ public class UltraSpeaker_LW
             nextDetection++;
             currentStep++;
 
-            bool listenDetected = string.Equals(
-                expected.Warning,
-                ListenMessage,
-                StringComparison.Ordinal
-            );
-            bool absolutePriorityWarning = listenDetected
-                || (
-                    UsesAllFreshAbsolutePriorityTaunts()
-                    && string.Equals(
-                        expected.Warning,
-                        TruthMessage,
-                        StringComparison.Ordinal
-                    )
-                );
             bool localFreshOwner = expected.Fresh
                 && LoneWolf.IsArmyPlayer(expected.Owner);
 
             if (localFreshOwner)
             {
-                if (absolutePriorityWarning)
-                    LoneWolf.RequestAbsolutePriorityTaunt(SpeakerMapId);
-                else
-                    LoneWolf.RequestTaunt(SpeakerMapId);
+                LoneWolf.RequestAbsolutePriorityTaunt(SpeakerMapId);
 
                 Core.Logger(
                     $"{LogPrefix} {playerAlias} requested Fresh {GetWarningName(expected.Warning)} taunt."
@@ -701,7 +663,7 @@ public class UltraSpeaker_LW
                 );
             }
 
-            if (absolutePriorityWarning && !localFreshOwner)
+            if (!localFreshOwner)
                 LoneWolf.ResumeSkillEngine();
 
             if (
@@ -863,36 +825,6 @@ public class UltraSpeaker_LW
         }
 
         return true;
-    }
-
-    private void ProcessTestHealClearSignals(
-        int fightAttempt,
-        ref int nextClearCycle
-    )
-    {
-        if (
-            armyComposition != ArmyComposition.Test
-            || bruteForceMethod
-            || !LoneWolf.IsArmyPlayer(GetArchPaladinPlayer())
-        )
-            return;
-
-        while (true)
-        {
-            int owner = GetZoneOwner(nextClearCycle);
-            string clearSignal = GetZoneClearSignal(
-                fightAttempt,
-                nextClearCycle
-            );
-            if (!LoneWolf.HasArmySignal(clearSignal, owner))
-                return;
-
-            LoneWolf.RequestLimitedPrioritySkill(2, 2);
-            Core.Logger(
-                $"{LogPrefix} {playerAlias} unlocked 2 heals from CLEAR cycle {nextClearCycle}."
-            );
-            nextClearCycle++;
-        }
     }
 
     private void StartInitialMovement(ZoneState state)
@@ -1272,9 +1204,7 @@ public class UltraSpeaker_LW
             preset.CapeEnhancement = CapeSpecial.Penitence;
 
             if (!bruteForceMethod)
-                preset.Skills = armyComposition == ArmyComposition.Test
-                    ? new[] { 1 }
-                    : new[] { 2, 1 };
+                preset.Skills = new[] { 2, 1 };
 
             return preset;
         }
@@ -1299,10 +1229,7 @@ public class UltraSpeaker_LW
     }
 
     private bool UsesStableComposition() =>
-        armyComposition is ArmyComposition.Stable or ArmyComposition.Test2;
-
-    private bool UsesAllFreshAbsolutePriorityTaunts() =>
-        armyComposition is ArmyComposition.Test2 or ArmyComposition.Test3;
+        armyComposition == ArmyComposition.Stable;
 
     private string GetPlayerAlias()
     {

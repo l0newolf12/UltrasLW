@@ -21,7 +21,6 @@ public class UltraDrago_LW
         Default,
         Stable,
         Reliable,
-        Test,
     }
 
     private enum FightResult
@@ -81,7 +80,7 @@ public class UltraDrago_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -657,19 +656,13 @@ public class UltraDrago_LW
     {
         SelectGuard(guardMapId);
         DateTimeOffset baseline = GetFocusExpiry();
-        if (armyComposition == ArmyComposition.Test)
-            LoneWolf.RequestAbsolutePriorityTaunt(guardMapId);
-        else
-            LoneWolf.RequestTaunt(guardMapId);
+        LoneWolf.RequestTaunt(guardMapId);
         return baseline;
     }
 
     private void RequestImmediateGuardTaunt(int guardMapId)
     {
-        if (armyComposition == ArmyComposition.Test)
-            LoneWolf.RequestAbsolutePriorityTaunt(guardMapId);
-        else
-            LoneWolf.RequestImmediateTaunt(guardMapId);
+        LoneWolf.RequestImmediateTaunt(guardMapId);
     }
 
     private void SelectGuard(int guardMapId)

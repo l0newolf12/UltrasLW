@@ -24,7 +24,6 @@ public class UltraNulgath_LW
         Optimized,
         Pay2Win,
         Fast,
-        Test,
     }
 
     private enum FightResult
@@ -80,7 +79,7 @@ public class UltraNulgath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / SC / LR / LOO\nFast: AI / VDK / LR / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / SC / LR / LOO\nFast: AI / VDK / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -162,8 +161,7 @@ public class UltraNulgath_LW
             return;
 
         playerAlias = GetPlayerAlias();
-        isTaunterOne = armyComposition
-            is ArmyComposition.Default or ArmyComposition.Test
+        isTaunterOne = armyComposition == ArmyComposition.Default
             ? LoneWolf.IsArmyPlayer(1)
             : LoneWolf.IsArmyPlayer(3);
         isTaunter = isTaunterOne || LoneWolf.IsArmyPlayer(4);
@@ -509,13 +507,8 @@ public class UltraNulgath_LW
                 : NulgathMapId;
     }
 
-    private void RequestNulgathTaunt()
-    {
-        if (armyComposition == ArmyComposition.Test)
-            LoneWolf.RequestAbsolutePriorityTaunt(NulgathMapId);
-        else
-            LoneWolf.RequestTaunt(NulgathMapId);
-    }
+    private void RequestNulgathTaunt() =>
+        LoneWolf.RequestAbsolutePriorityTaunt(NulgathMapId);
 
     private static string GetAbyssTauntSignalName(
         int fightAttempt,

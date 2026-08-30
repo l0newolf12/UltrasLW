@@ -18,12 +18,9 @@ public class UltraGramiel_LW
 {
     public enum ArmyComposition
     {
-        Default,
-        Optimized,
-        Test,
-        Test2,
-        Test3,
-        Test4,
+        Default = 0,
+        Optimized = 1,
+        Reliable = 2,
     }
 
     private enum PhaseResult
@@ -100,7 +97,7 @@ public class UltraGramiel_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: Shaman / SC / AP / LOO\nTest3: VDK / SC / AP / LOO\nTest4: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -347,8 +344,8 @@ public class UltraGramiel_LW
             IsShamanPlayer()
                 ? SkillEngineMode.Simple
                 : preset.SkillMode,
-            blockedStrictSkill: IsVerusDoomKnightComposition() ? 4 : 0,
-            blockedStrictSkillTargetAura: IsVerusDoomKnightComposition()
+            blockedStrictSkill: IsReliableVerusDoomKnight() ? 4 : 0,
+            blockedStrictSkillTargetAura: IsReliableVerusDoomKnight()
                 ? "Safeguard"
                 : string.Empty
         );
@@ -487,6 +484,7 @@ public class UltraGramiel_LW
         PhaseTwoDetectorState detectorState = PhaseTwoDetectorState.Attacks;
         bool rotationRestricted = false;
         bool damageHold = false;
+        bool shamanInvulnerableSkillThreeBlocked = false;
 
         while (!Bot.ShouldExit)
         {
@@ -526,7 +524,7 @@ public class UltraGramiel_LW
                 return FinishPhaseTwo(PhaseResult.Completed);
             }
 
-            if (UsesHealingHoldComposition() && damageHold)
+            if (damageHold)
             {
                 if (
                     !Bot.Player.HasTarget
@@ -539,6 +537,35 @@ public class UltraGramiel_LW
             }
             else
                 LoneWolf.MaintainTarget(GramielMapId);
+
+            if (IsShamanPlayer())
+            {
+                bool gramielInvulnerable = Bot.Target
+                    .GetMonsterAura(GramielMapId)
+                    .Contains(
+                        $"\"nam\":\"{InvulnerableAura}\"",
+                        StringComparison.Ordinal
+                    );
+
+                if (
+                    gramielInvulnerable
+                    && !shamanInvulnerableSkillThreeBlocked
+                )
+                {
+                    LoneWolf.SetShamanSkillThreeEnabled(false);
+                    shamanInvulnerableSkillThreeBlocked = true;
+                    Core.Logger($"{LogPrefix} playerOne disabled skill 3 while Gramiel has Invulnerable.");
+                }
+                else if (
+                    !gramielInvulnerable
+                    && shamanInvulnerableSkillThreeBlocked
+                )
+                {
+                    LoneWolf.SetShamanSkillThreeEnabled(true);
+                    shamanInvulnerableSkillThreeBlocked = false;
+                    Core.Logger($"{LogPrefix} playerOne restored skill 3 after Gramiel's Invulnerable ended.");
+                }
+            }
 
             if (!graceGivenObserved)
             {
@@ -581,104 +608,38 @@ public class UltraGramiel_LW
                             Core.Logger($"{LogPrefix} playerThree restricted its rotation to {{2}} on playerOne's taunt attack.");
                         }
 
-                        if (IsOptimizedShaman())
+                        if (attack == ownedAttack)
                         {
-                            if (attack == 3 && usePhaseTwoSlowdown)
-                            {
-                                LoneWolf.SetShamanSkillThreeEnabled(false);
-                                Core.Logger($"{LogPrefix} playerOne disabled skill 3 on nuke cycle {nukeCycle}, attack 3.");
-                            }
+                            LoneWolf.MaintainTarget(GramielMapId);
+                            RequestGramielTaunt(GramielMapId);
+                            Core.Logger($"{LogPrefix} {playerAlias} requested Gramiel taunt on nuke cycle {nukeCycle}, attack {attack}.");
 
-                            if (attack == 7)
-                            {
-                                if (usePhaseTwoSlowdown)
-                                {
-                                    LoneWolf.SetShamanSkillThreeEnabled(true);
-                                    Core.Logger($"{LogPrefix} playerOne restored skill 3 on nuke cycle {nukeCycle}, attack 7.");
-                                }
-
-                                if (!StartChargeTwoPacketDetector())
-                                    return FinishPhaseTwo(PhaseResult.Stopped);
-
-                                detectorState = PhaseTwoDetectorState.ChargeTwo;
-                                break;
-                            }
-                        }
-
-                        if (UsesHealingHoldComposition())
-                        {
-                            if (attack == ownedAttack)
-                            {
-                                LoneWolf.MaintainTarget(GramielMapId);
-                                RequestGramielTaunt(GramielMapId);
-                                Core.Logger($"{LogPrefix} {playerAlias} requested Gramiel taunt on nuke cycle {nukeCycle}, attack {attack}.");
-
-                                if (
-                                    LoneWolf.IsArmyPlayer(1)
-                                    && IsTestComposition()
-                                    && usePhaseTwoSlowdown
-                                )
-                                {
-                                    LoneWolf.SetSkillEngineSkills(new[] { 3 });
-                                    rotationRestricted = true;
-                                }
-                            }
-
-                            if (attack != 7)
-                                continue;
-
-                            if (rotationRestricted)
-                            {
-                                LoneWolf.SetSkillEngineSkills(normalSkills);
-                                rotationRestricted = false;
-                                Core.Logger($"{LogPrefix} {playerAlias} restored its normal rotation on nuke cycle {nukeCycle}, attack 7.");
-                            }
-
-                            if (!StartLiberatorPacketDetector())
-                                return FinishPhaseTwo(PhaseResult.Stopped);
-
-                            detectorState = PhaseTwoDetectorState.Liberator;
-                            Core.Logger($"{LogPrefix} {playerAlias} reached attack 7 and started waiting for Liberator.");
-                            break;
-                        }
-
-                        if (attack != ownedAttack)
-                            continue;
-
-                        LoneWolf.MaintainTarget(GramielMapId);
-                        RequestGramielTaunt(GramielMapId);
-                        Core.Logger($"{LogPrefix} {playerAlias} requested Gramiel taunt on nuke cycle {nukeCycle}, attack {attack}.");
-
-                        if (IsOptimizedShaman())
-                            continue;
-
-                        if (
-                            LoneWolf.IsArmyPlayer(1)
-                            || LoneWolf.IsArmyPlayer(3)
-                        )
-                        {
                             if (
                                 LoneWolf.IsArmyPlayer(1)
+                                && UsesDefaultCompositionBehavior()
                                 && usePhaseTwoSlowdown
                             )
                             {
                                 LoneWolf.SetSkillEngineSkills(new[] { 3 });
                                 rotationRestricted = true;
                             }
-
-                            if (!StartLiberatorPacketDetector())
-                                return FinishPhaseTwo(PhaseResult.Stopped);
-
-                            detectorState = PhaseTwoDetectorState.Liberator;
-                            Core.Logger($"{LogPrefix} {playerAlias} started waiting for Liberator.");
                         }
-                        else
+
+                        if (attack != 7)
+                            continue;
+
+                        if (rotationRestricted)
                         {
-                            if (!StartChargeTwoPacketDetector())
-                                return FinishPhaseTwo(PhaseResult.Stopped);
-
-                            detectorState = PhaseTwoDetectorState.ChargeTwo;
+                            LoneWolf.SetSkillEngineSkills(normalSkills);
+                            rotationRestricted = false;
+                            Core.Logger($"{LogPrefix} {playerAlias} restored its normal rotation on nuke cycle {nukeCycle}, attack 7.");
                         }
+
+                        if (!StartLiberatorPacketDetector())
+                            return FinishPhaseTwo(PhaseResult.Stopped);
+
+                        detectorState = PhaseTwoDetectorState.Liberator;
+                        Core.Logger($"{LogPrefix} {playerAlias} reached attack 7 and started waiting for Liberator.");
 
                         break;
                     }
@@ -688,10 +649,9 @@ public class UltraGramiel_LW
                     if (!LoneWolf.HasPacketDetection(1))
                     {
                         if (
-                            UsesHealingHoldComposition()
-                            && !damageHold
+                            !damageHold
                             && GetGramielHealthPercentage()
-                                <= GetTestHoldThreshold(nukeCycle)
+                                <= GetHealingHoldThreshold(nukeCycle)
                         )
                         {
                             if (SuppressPlayerOneDuringHealingHold())
@@ -701,36 +661,24 @@ public class UltraGramiel_LW
 
                             Bot.Combat.CancelAutoAttack();
                             damageHold = true;
-                            Core.Logger($"{LogPrefix} {playerAlias} started the nuke cycle {nukeCycle} healing hold at {GetTestHoldThreshold(nukeCycle)}% Gramiel HP.");
+                            Core.Logger($"{LogPrefix} {playerAlias} started the nuke cycle {nukeCycle} healing hold at {GetHealingHoldThreshold(nukeCycle)}% Gramiel HP.");
                         }
 
-                        if (UsesHealingHoldComposition() && damageHold)
+                        if (damageHold)
                             Bot.Combat.CancelAutoAttack();
 
                         break;
                     }
 
-                    if (UsesHealingHoldComposition())
-                    {
-                        if (SuppressPlayerOneDuringHealingHold())
-                            LoneWolf.SetOrdinarySkillsSuppressed(false);
-                        else
-                            LoneWolf.SetSkillEngineSkills(normalSkills);
-
-                        damageHold = false;
-                        rotationRestricted = false;
-                        LoneWolf.MaintainTarget(GramielMapId);
-                        Core.Logger($"{LogPrefix} {playerAlias} detected Liberator in a {LoneWolf.GetPacketDetectorCommand()} packet and restored its normal rotation.");
-                    }
-
-                    else if (rotationRestricted)
-                    {
-                        LoneWolf.SetSkillEngineSkills(normalSkills);
-                        rotationRestricted = false;
-                        Core.Logger($"{LogPrefix} {playerAlias} detected Liberator in a {LoneWolf.GetPacketDetectorCommand()} packet and restored its normal rotation.");
-                    }
+                    if (SuppressPlayerOneDuringHealingHold())
+                        LoneWolf.SetOrdinarySkillsSuppressed(false);
                     else
-                        Core.Logger($"{LogPrefix} {playerAlias} detected Liberator in a {LoneWolf.GetPacketDetectorCommand()} packet.");
+                        LoneWolf.SetSkillEngineSkills(normalSkills);
+
+                    damageHold = false;
+                    rotationRestricted = false;
+                    LoneWolf.MaintainTarget(GramielMapId);
+                    Core.Logger($"{LogPrefix} {playerAlias} detected Liberator in a {LoneWolf.GetPacketDetectorCommand()} packet and restored its normal rotation.");
 
                     if (!StartChargeTwoPacketDetector())
                         return FinishPhaseTwo(PhaseResult.Stopped);
@@ -883,7 +831,7 @@ public class UltraGramiel_LW
         return 100f;
     }
 
-    private int GetTestHoldThreshold(int nukeCycle) =>
+    private int GetHealingHoldThreshold(int nukeCycle) =>
         nukeCycle switch
         {
             1 => 75,
@@ -906,13 +854,10 @@ public class UltraGramiel_LW
     }
 
     private bool IsPhaseTwoSlowdownOwner() =>
-        IsOptimizedShaman()
-        || (
-            UsesDefaultCompositionBehavior()
-            && (
-                LoneWolf.IsArmyPlayer(1)
-                || LoneWolf.IsArmyPlayer(3)
-            )
+        UsesDefaultCompositionBehavior()
+        && (
+            LoneWolf.IsArmyPlayer(1)
+            || LoneWolf.IsArmyPlayer(3)
         );
 
     private int GetPhaseTwoTauntAttack()
@@ -957,7 +902,7 @@ public class UltraGramiel_LW
                 || LoneWolf.IsArmyPlayer(3)
                 || LoneWolf.IsArmyPlayer(4)
                 || IsShamanPlayer()
-                || IsVerusDoomKnightComposition()
+                || IsReliableVerusDoomKnight()
             )
                 tauntTargetUntil = DateTimeOffset.Now.AddMilliseconds(
                     TauntTargetHold
@@ -1081,7 +1026,7 @@ public class UltraGramiel_LW
         }
 
         bool crystalBalancer = armyComposition
-            is ArmyComposition.Test3 or ArmyComposition.Test4
+            is ArmyComposition.Reliable
             ? LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4)
             : UsesDefaultCompositionBehavior()
                 ? LoneWolf.IsArmyPlayer(4)
@@ -1230,33 +1175,17 @@ public class UltraGramiel_LW
     private bool IsInFightRoom() =>
         Bot.Player.Cell == FightCell && Bot.Player.Pad == FightPad;
 
-    private bool IsTestComposition() =>
-        armyComposition == ArmyComposition.Test;
-
-    private bool UsesHealingHoldComposition() =>
-        armyComposition
-            is ArmyComposition.Test
-                or ArmyComposition.Test2
-                or ArmyComposition.Test3
-                or ArmyComposition.Test4;
-
     private bool UsesDefaultCompositionBehavior() =>
-        armyComposition is ArmyComposition.Default or ArmyComposition.Test;
+        armyComposition == ArmyComposition.Default;
 
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1))
         {
-            if (
-                armyComposition
-                is ArmyComposition.Test3 or ArmyComposition.Test4
-            )
+            if (armyComposition == ArmyComposition.Reliable)
                 return LoneWolf.VerusDoomKnight();
 
-            if (
-                armyComposition
-                is ArmyComposition.Optimized or ArmyComposition.Test2
-            )
+            if (armyComposition == ArmyComposition.Optimized)
             {
                 ClassPreset shaman = LoneWolf.Shaman();
                 shaman.BaseEnhancement = EnhancementType.Wizard;
@@ -1293,29 +1222,17 @@ public class UltraGramiel_LW
         armyComposition == ArmyComposition.Optimized
         && LoneWolf.IsArmyPlayer(1);
 
-    private bool IsTest2Shaman() =>
-        armyComposition == ArmyComposition.Test2
-        && LoneWolf.IsArmyPlayer(1);
-
-    private bool IsVerusDoomKnightComposition() =>
-        armyComposition is ArmyComposition.Test3 or ArmyComposition.Test4
+    private bool IsReliableVerusDoomKnight() =>
+        armyComposition == ArmyComposition.Reliable
         && LoneWolf.IsArmyPlayer(1);
 
     private bool SuppressPlayerOneDuringHealingHold() =>
-        IsTest2Shaman() || IsVerusDoomKnightComposition();
+        IsOptimizedShaman() || IsReliableVerusDoomKnight();
 
-    private void RequestGramielTaunt(int mapId)
-    {
-        if (armyComposition == ArmyComposition.Test4)
-            LoneWolf.RequestAbsolutePriorityTaunt(mapId);
-        else
-            LoneWolf.RequestTaunt(mapId);
-    }
+    private void RequestGramielTaunt(int mapId) =>
+        LoneWolf.RequestAbsolutePriorityTaunt(mapId);
 
-    private bool IsShamanPlayer() =>
-        armyComposition
-            is ArmyComposition.Optimized or ArmyComposition.Test2
-        && LoneWolf.IsArmyPlayer(1);
+    private bool IsShamanPlayer() => IsOptimizedShaman();
 
     private string GetPlayerAlias()
     {

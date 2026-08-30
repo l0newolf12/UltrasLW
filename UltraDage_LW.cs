@@ -21,7 +21,6 @@ public class UltraDage_LW
         Default,
         Stable,
         Reliable,
-        Test,
     }
 
     private enum FightResult
@@ -81,7 +80,7 @@ public class UltraDage_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -161,9 +160,7 @@ public class UltraDage_LW
             return;
 
         playerAlias = GetPlayerAlias();
-        isTaunter = armyComposition == ArmyComposition.Stable
-            ? LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4)
-            : LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(3);
+        isTaunter = IsEnrageTaunter();
         ClassPreset preset = GetClassPreset();
 
         Core.Logger($"{LogPrefix} started as {playerAlias} using {armyComposition} composition.");
@@ -264,34 +261,22 @@ public class UltraDage_LW
                 weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
-        bool stableKingsEcho = armyComposition == ArmyComposition.Stable
-            && LoneWolf.IsArmyPlayer(1);
-
         if (GetSetupOption<bool>("UsePotions"))
             LoneWolf.PreparePotions(
                 preset.Tonic,
                 preset.Elixir,
-                stableKingsEcho ? preset.CombatPotion : null
+                UsesFullPotionSet() ? preset.CombatPotion : null
             );
 
-        if (armyComposition == ArmyComposition.Stable)
+        if (isTaunter)
+            LoneWolf.PrepareScrolls(EnrageScroll);
+        else if (IsPrimaryDecayHolder())
+            LoneWolf.PrepareScrolls(DecayScroll);
+        else if (IsMystifyHolder())
         {
-            if (LoneWolf.IsArmyPlayer(2))
-                LoneWolf.PrepareScrolls(DecayScroll);
-            else if (LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4))
-                LoneWolf.PrepareScrolls(EnrageScroll);
-        }
-        else
-        {
-            if (LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(3))
-                LoneWolf.PrepareScrolls(EnrageScroll);
-            else if (LoneWolf.IsArmyPlayer(2))
-                LoneWolf.PrepareScrolls(DecayScroll);
-            else
-            {
-                LoneWolf.PrepareScrolls(MystifyScroll);
-                LoneWolf.PrepareScrolls(DecayScroll);
-            }
+            LoneWolf.PrepareScrolls(MystifyScroll);
+
+            LoneWolf.PrepareScrolls(DecayScroll);
         }
 
         if (Bot.ShouldExit)
@@ -338,28 +323,18 @@ public class UltraDage_LW
     {
         mystifyMode = false;
 
-        bool stableKingsEcho = armyComposition == ArmyComposition.Stable
-            && LoneWolf.IsArmyPlayer(1);
-
         if (GetSetupOption<bool>("UsePotions"))
             LoneWolf.UsePotions(
                 preset.Tonic,
                 preset.Elixir,
-                stableKingsEcho ? preset.CombatPotion : null
+                UsesFullPotionSet() ? preset.CombatPotion : null
             );
 
-        if (armyComposition == ArmyComposition.Stable)
-        {
-            if (LoneWolf.IsArmyPlayer(2))
-                LoneWolf.EquipScroll(DecayScroll);
-            else if (LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4))
-                LoneWolf.EquipScroll(EnrageScroll);
-        }
-        else if (LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(3))
+        if (isTaunter)
             LoneWolf.EquipScroll(EnrageScroll);
-        else if (LoneWolf.IsArmyPlayer(2))
+        else if (IsPrimaryDecayHolder())
             LoneWolf.EquipScroll(DecayScroll);
-        else
+        else if (IsMystifyHolder())
         {
             LoneWolf.EquipScroll(MystifyScroll);
             mystifyMode = Bot.Inventory.IsEquipped(MystifyScroll);
@@ -374,7 +349,7 @@ public class UltraDage_LW
             if (!LoneWolf.SendArmySignal(modeSignal))
             {
                 Core.Logger(
-                    $"{LogPrefix} playerFour could not publish the scroll mode.",
+                    $"{LogPrefix} {playerAlias} could not publish the scroll mode.",
                     "PrepareSafeRoom",
                     messageBox: true,
                     stopBot: true
@@ -382,7 +357,9 @@ public class UltraDage_LW
                 return false;
             }
 
-            Core.Logger($"{LogPrefix} playerFour selected {(mystifyMode ? "Mystify" : "alternating Decay")} mode.");
+            Core.Logger(
+                $"{LogPrefix} {playerAlias} selected {(mystifyMode ? "Mystify" : "alternating Decay")} mode."
+            );
         }
 
         if (Bot.ShouldExit || !Sync($"SCROLL_MODE_{fightAttempt}"))
@@ -419,8 +396,7 @@ public class UltraDage_LW
             return FightEnrageTaunter(fightAttempt);
 
         if (
-            armyComposition == ArmyComposition.Stable
-            && LoneWolf.IsArmyPlayer(1)
+            IsDamageDealer()
         )
             return FightDamageDealer(fightAttempt);
 
@@ -459,12 +435,8 @@ public class UltraDage_LW
 
     private FightResult FightEnrageTaunter(int fightAttempt)
     {
-        bool openingOwner = armyComposition == ArmyComposition.Stable
-            ? LoneWolf.IsArmyPlayer(3)
-            : LoneWolf.IsArmyPlayer(1);
-        int partnerPlayerNumber = armyComposition == ArmyComposition.Stable
-            ? openingOwner ? 4 : 3
-            : openingOwner ? 3 : 1;
+        bool openingOwner = IsOpeningTauntOwner();
+        int partnerPlayerNumber = GetTauntPartnerPlayerNumber(openingOwner);
         string partnerName = (
             GetSetupOption<string>($"player{partnerPlayerNumber}")
         ).Trim();
@@ -508,7 +480,7 @@ public class UltraDage_LW
             DrainZoneEvents(move: true);
             LoneWolf.MaintainTarget(DageMapId);
 
-            if (LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4))
+            if (IsSafeHealer())
                 HandleSafeHeal(ref safeHealUsedThisWindow);
 
             if (recovered)
@@ -635,18 +607,12 @@ public class UltraDage_LW
 
     private void RequestEnrageTaunt()
     {
-        if (armyComposition == ArmyComposition.Test)
-            LoneWolf.RequestAbsolutePriorityTaunt(DageMapId);
-        else
-            LoneWolf.RequestTaunt(DageMapId);
+        LoneWolf.RequestTaunt(DageMapId);
     }
 
     private void RequestImmediateEnrageTaunt()
     {
-        if (armyComposition == ArmyComposition.Test)
-            LoneWolf.RequestAbsolutePriorityTaunt(DageMapId);
-        else
-            LoneWolf.RequestImmediateTaunt(DageMapId);
+        LoneWolf.RequestImmediateTaunt(DageMapId);
     }
 
     private FightResult FightScrollHolder(int fightAttempt, bool mystifyMode)
@@ -679,10 +645,11 @@ public class UltraDage_LW
             DrainZoneEvents(move: true);
             LoneWolf.MaintainTarget(DageMapId);
 
-            if (LoneWolf.IsArmyPlayer(4))
-            {
+            if (IsSafeHealer())
                 HandleSafeHeal(ref safeHealUsedThisWindow);
 
+            if (IsMystifyHolder())
+            {
                 if (mystifyMode)
                     LoneWolf.RequestImmediateSkillFive(DageMapId);
             }
@@ -837,7 +804,7 @@ public class UltraDage_LW
     {
         bool stableKingsEcho = armyComposition == ArmyComposition.Stable
             && LoneWolf.IsArmyPlayer(1);
-        bool reliableVerusDoomKnight =
+        bool dageVerusDoomKnight =
             armyComposition == ArmyComposition.Reliable
             && LoneWolf.IsArmyPlayer(1);
 
@@ -852,8 +819,8 @@ public class UltraDage_LW
                 && GetSetupOption<bool>("UsePotions")
                     ? preset.CombatPotion
                     : null,
-            blockedStrictSkill: reliableVerusDoomKnight ? 2 : 0,
-            blockedStrictSkillSelfAura: reliableVerusDoomKnight
+            blockedStrictSkill: dageVerusDoomKnight ? 2 : 0,
+            blockedStrictSkillSelfAura: dageVerusDoomKnight
                 ? UnleashedDoomAura
                 : string.Empty
         );
@@ -1084,14 +1051,53 @@ public class UltraDage_LW
         preset.WeaponEnhancementFallbacks = Array.Empty<WeaponSpecial>();
         preset.CapeEnhancement = CapeSpecial.Vainglory;
 
-        if (
-            armyComposition != ArmyComposition.Stable
-            || !LoneWolf.IsArmyPlayer(1)
-        )
+        if (!UsesFullPotionSet())
             preset.CombatPotion = null;
 
         return preset;
     }
+
+    private bool IsEnrageTaunter()
+    {
+        if (armyComposition == ArmyComposition.Stable)
+            return LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4);
+
+        return LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(3);
+    }
+
+    private bool IsOpeningTauntOwner()
+    {
+        if (armyComposition == ArmyComposition.Stable)
+            return LoneWolf.IsArmyPlayer(3);
+
+        return LoneWolf.IsArmyPlayer(1);
+    }
+
+    private int GetTauntPartnerPlayerNumber(bool openingOwner)
+    {
+        if (armyComposition == ArmyComposition.Stable)
+            return openingOwner ? 4 : 3;
+
+        return openingOwner ? 3 : 1;
+    }
+
+    private bool IsPrimaryDecayHolder() => LoneWolf.IsArmyPlayer(2);
+
+    private bool IsMystifyHolder() =>
+        armyComposition != ArmyComposition.Stable
+        && LoneWolf.IsArmyPlayer(4);
+
+    private bool IsDamageDealer() =>
+        LoneWolf.IsArmyPlayer(1)
+        && armyComposition == ArmyComposition.Stable;
+
+    private bool IsSafeHealer() =>
+        LoneWolf.IsArmyPlayer(3)
+        || LoneWolf.IsArmyPlayer(4);
+
+    private bool UsesFullPotionSet() =>
+        LoneWolf.IsArmyPlayer(1)
+        && armyComposition == ArmyComposition.Stable;
 
     private string GetPlayerAlias()
     {

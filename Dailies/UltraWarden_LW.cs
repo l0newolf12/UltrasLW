@@ -20,7 +20,6 @@ public class UltraWarden_LW
         Default,
         Stable,
         Reliable,
-        Test,
     }
 
     private enum FightResult
@@ -70,7 +69,7 @@ public class UltraWarden_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -341,10 +340,7 @@ public class UltraWarden_LW
                 && monsterHealth <= TauntHealth
             )
             {
-                if (armyComposition == ArmyComposition.Test)
-                    LoneWolf.RequestAbsolutePriorityTaunt(MonsterMapId);
-                else
-                    LoneWolf.RequestTaunt(MonsterMapId);
+                LoneWolf.RequestTaunt(MonsterMapId);
                 tauntRequested = true;
                 Core.Logger($"{LogPrefix} {playerAlias} requested the Warden taunt.");
             }

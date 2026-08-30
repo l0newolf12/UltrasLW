@@ -23,7 +23,6 @@ public class UltraTyndarius_LW
         Reliable,
         Fast,
         Test,
-        Test2,
     }
 
     private enum FightResult
@@ -80,7 +79,7 @@ public class UltraTyndarius_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO\nTest: LR / SC / AP / LOO\nTest2: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO\nTest: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -674,9 +673,7 @@ public class UltraTyndarius_LW
 
     private void RequestBossTaunt(bool immediate)
     {
-        if (armyComposition == ArmyComposition.Test2)
-            LoneWolf.RequestAbsolutePriorityTaunt(MainBossMapId);
-        else if (immediate)
+        if (immediate)
             LoneWolf.RequestImmediateTaunt(MainBossMapId);
         else
             LoneWolf.RequestTaunt(MainBossMapId);
@@ -910,8 +907,7 @@ public class UltraTyndarius_LW
 
     private bool UsesDefaultFightRoles() =>
         armyComposition == ArmyComposition.Default
-        || armyComposition == ArmyComposition.Reliable
-        || armyComposition == ArmyComposition.Test2;
+        || armyComposition == ArmyComposition.Reliable;
 
     private bool IsTaunterRole() =>
         UsesDefaultFightRoles()
