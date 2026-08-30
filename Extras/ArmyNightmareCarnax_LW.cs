@@ -463,7 +463,11 @@ public class ArmyNightmareCarnax_LW
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2))
-            return LoneWolf.DragonOfTime();
+        {
+            ClassPreset dragonOfTime = LoneWolf.DragonOfTime();
+            dragonOfTime.HelmEnhancement = HelmSpecial.None;
+            return dragonOfTime;
+        }
 
         if (LoneWolf.IsArmyPlayer(3))
             return LoneWolf.StoneCrusher();
