@@ -21,6 +21,7 @@ public class ArmyPrismatasGoldFarm_LW
     {
         Default,
         Stable,
+        Unselected,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -97,7 +98,7 @@ public class ArmyPrismatasGoldFarm_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO / Shaman / Bard / VDK\nStable: AF / SC / AP / LOO / Shaman / Bard / VDK",
+            "Default: LR / SC / AP / LOO / Shaman / Bard / VDK\nStable: AF / SC / AP / LOO / Shaman / Bard / VDK\nUnselected: Current Class / Skua Advanced Skills / No Enhancements or Potions",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -153,6 +154,7 @@ public class ArmyPrismatasGoldFarm_LW
         finally
         {
             LoneWolf.StopSkillEngine();
+            Bot.Skills.Stop();
             RestoreAntiLag();
         }
     }
@@ -327,28 +329,37 @@ public class ArmyPrismatasGoldFarm_LW
     {
         Core.Logger($"{LogPrefix} {playerAlias} starting setup.");
 
-        LoneWolf.EquipClass(preset);
-        if (Bot.ShouldExit)
-            return false;
-
-        if (Bot.Config!.Get<bool>("UseEnhancements"))
+        if (armyComposition == ArmyComposition.Unselected)
         {
-            LoneWolf.PrepareEnhancements(
-                preset.BaseEnhancement,
-                preset.CapeEnhancement,
-                preset.HelmEnhancement,
-                preset.WeaponEnhancement,
-                weaponFallbacks: preset.WeaponEnhancementFallbacks
+            Core.Logger(
+                $"{LogPrefix} {playerAlias} preserving current class {preset.ClassName} and skipping enhancements and potions."
             );
         }
-
-        if (Bot.Config.Get<bool>("UsePotions"))
+        else
         {
-            LoneWolf.PreparePotions(
-                preset.Tonic,
-                preset.Elixir,
-                preset.CombatPotion
-            );
+            LoneWolf.EquipClass(preset);
+            if (Bot.ShouldExit)
+                return false;
+
+            if (Bot.Config!.Get<bool>("UseEnhancements"))
+            {
+                LoneWolf.PrepareEnhancements(
+                    preset.BaseEnhancement,
+                    preset.CapeEnhancement,
+                    preset.HelmEnhancement,
+                    preset.WeaponEnhancement,
+                    weaponFallbacks: preset.WeaponEnhancementFallbacks
+                );
+            }
+
+            if (Bot.Config.Get<bool>("UsePotions"))
+            {
+                LoneWolf.PreparePotions(
+                    preset.Tonic,
+                    preset.Elixir,
+                    preset.CombatPotion
+                );
+            }
         }
 
         if (Bot.ShouldExit)
@@ -432,13 +443,18 @@ public class ArmyPrismatasGoldFarm_LW
         Core.Jump(FightCell, FightPad);
         Bot.Options.AggroMonsters = true;
 
-        LoneWolf.StartSkillEngine(
-            preset.Skills,
-            playerAlias,
-            false,
-            LogPrefix,
-            preset.SkillMode
-        );
+        if (armyComposition == ArmyComposition.Unselected)
+            Bot.Skills.Start();
+        else
+        {
+            LoneWolf.StartSkillEngine(
+                preset.Skills,
+                playerAlias,
+                false,
+                LogPrefix,
+                preset.SkillMode
+            );
+        }
         Core.Logger(
             $"{LogPrefix} {playerAlias} started Elemental Binding cycle {farmCycle}."
         );
@@ -563,7 +579,10 @@ public class ArmyPrismatasGoldFarm_LW
             return true;
         }
 
-        if (Bot.Config!.Get<bool>("UsePotions"))
+        if (
+            armyComposition != ArmyComposition.Unselected
+            && Bot.Config!.Get<bool>("UsePotions")
+        )
         {
             LoneWolf.UsePotions(
                 preset.Tonic,
@@ -681,11 +700,20 @@ public class ArmyPrismatasGoldFarm_LW
     private void StopCombat()
     {
         LoneWolf.StopSkillEngine();
+        Bot.Skills.Stop();
         Bot.Combat.CancelTarget();
     }
 
     private ClassPreset GetClassPreset()
     {
+        if (armyComposition == ArmyComposition.Unselected)
+        {
+            return new ClassPreset
+            {
+                ClassName = Bot.Player.CurrentClass?.Name ?? "Current Class",
+            };
+        }
+
         if (LoneWolf.IsArmyPlayer(1))
         {
             return armyComposition == ArmyComposition.Stable
