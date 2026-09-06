@@ -79,7 +79,7 @@ public class UltraNulgath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / SC / LR / LOO\nFast: AI / VDK / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / VDK / LR / LOO\nFast: AI / VDK / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -615,7 +615,10 @@ public class UltraNulgath_LW
 
         if (LoneWolf.IsArmyPlayer(2))
         {
-            if (armyComposition == ArmyComposition.Fast)
+            if (
+                armyComposition == ArmyComposition.Fast
+                || armyComposition == ArmyComposition.Pay2Win
+            )
                 return LoneWolf.VerusDoomKnight();
 
             return armyComposition == ArmyComposition.Optimized

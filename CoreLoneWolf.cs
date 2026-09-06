@@ -24,6 +24,8 @@ using Skua.Core.Options;
 
 public class CoreLoneWolf
 {
+    private const string ArchFiendsMarkAura = "ArchFiend's Mark";
+
     private IScriptInterface Bot => IScriptInterface.Instance;
     private CoreBots Core => CoreBots.Instance;
 
@@ -337,6 +339,23 @@ public class CoreLoneWolf
             WeaponEnhancement = WeaponSpecial.Elysium,
             Tonic = "Fate Tonic",
             Elixir = "Potent Malevolence Elixir",
+            CombatPotion = "Potent Honor Potion",
+        };
+
+    public ClassPreset PaladinChronomancer() =>
+        new()
+        {
+            ClassName = "Paladin Chronomancer",
+            AlternateClassNames = new[] { "Obsidian Paladin Chronomancer" },
+            Skills = new[] { 2, 1, 1, 3, 1, 1, 1, 4, 2, 1, 1, 1, 1, 1, 4 },
+            SkillMode = SkillEngineMode.Strict,
+            BaseEnhancement = EnhancementType.Fighter,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Hearty,
+            WeaponEnhancement = WeaponSpecial.Mana_Vamp,
+            WeaponEnhancementFallbacks = Array.Empty<WeaponSpecial>(),
+            Tonic = "Might Tonic",
+            Elixir = "Divine Elixir",
             CombatPotion = "Potent Honor Potion",
         };
 
@@ -1235,6 +1254,7 @@ public class CoreLoneWolf
                     if (
                         skillEngineMode is SkillEngineMode.Simple
                             or SkillEngineMode.LightCasterHealing
+                            or SkillEngineMode.ArchFiendNoHealing
                             or SkillEngineMode.VoidHighlord
                             or SkillEngineMode.ChaosAvengerOptimized
                             or SkillEngineMode.ScionOfFlames
@@ -1478,6 +1498,10 @@ public class CoreLoneWolf
                             skillEngineMode == SkillEngineMode.LightCasterHealing
                         )
                             LightCasterHealingSkillEngine();
+                        else if (
+                            skillEngineMode == SkillEngineMode.ArchFiendNoHealing
+                        )
+                            ArchFiendNoHealingSkillEngine();
                         else if (
                             skillEngineMode == SkillEngineMode.VoidHighlord
                         )
@@ -1855,6 +1879,20 @@ public class CoreLoneWolf
     private void LightCasterHealingSkillEngine()
     {
         if (Bot.Skills.CanUseSkill(3))
+        {
+            Bot.Skills.UseSkill(3);
+            return;
+        }
+
+        CustomSkillEngine();
+    }
+
+    private void ArchFiendNoHealingSkillEngine()
+    {
+        if (
+            !Bot.Self.HasActiveAura(ArchFiendsMarkAura)
+            && Bot.Skills.CanUseSkill(3)
+        )
         {
             Bot.Skills.UseSkill(3);
             return;
@@ -5675,6 +5713,7 @@ public enum SkillEngineMode
     ScionOfFlames,
     Guardian,
     ShadowStalkerOfTime,
+    ArchFiendNoHealing,
 }
 
 public class ClassPreset

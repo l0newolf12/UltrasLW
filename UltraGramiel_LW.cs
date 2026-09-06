@@ -21,6 +21,7 @@ public class UltraGramiel_LW
         Default = 0,
         Optimized = 1,
         Reliable = 2,
+        Pay2Win = 3,
     }
 
     private enum PhaseResult
@@ -56,6 +57,7 @@ public class UltraGramiel_LW
     private const string CrystalChargeMessage =
         "The Grace Crystal prepares a defense shattering attack!";
     private const string ChargeAnimationMarker = "\"animStr\":\"Charge\"";
+    private const string CrystalACasterMarker = "\"cInf\":\"m:2\"";
     private const string SafeguardAuraMarker = "\"nam\":\"Safeguard\"";
     private const string GraceGivenAuraMarker = "\"nam\":\"Grace Given\"";
     private const string GramielCasterMarker = "\"cInf\":\"m:1\"";
@@ -97,7 +99,7 @@ public class UltraGramiel_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -320,7 +322,12 @@ public class UltraGramiel_LW
         if (
             LoneWolf.StartPacketDetector(
                 PacketCommand,
-                new[] { CrystalChargeMessage, ChargeAnimationMarker }
+                new[]
+                {
+                    CrystalChargeMessage,
+                    ChargeAnimationMarker,
+                    CrystalACasterMarker,
+                }
             )
         )
             return true;
@@ -608,6 +615,23 @@ public class UltraGramiel_LW
                             Core.Logger($"{LogPrefix} playerThree restricted its rotation to {{2}} on playerOne's taunt attack.");
                         }
 
+                        if (
+                            usePhaseTwoSlowdown
+                            && armyComposition == ArmyComposition.Pay2Win
+                            && LoneWolf.IsArmyPlayer(1)
+                            && attack == 3
+                        )
+                        {
+                            int[] slowdownSkills = new[] { 1 };
+                            RestartPhaseTwoSkillEngine(
+                                slowdownSkills,
+                                SkillEngineMode.Simple
+                            );
+
+                            rotationRestricted = true;
+                            Core.Logger($"{LogPrefix} {playerAlias} restricted its rotation to healing skill {slowdownSkills[0]} on attack {attack}.");
+                        }
+
                         if (attack == ownedAttack)
                         {
                             LoneWolf.MaintainTarget(GramielMapId);
@@ -630,7 +654,14 @@ public class UltraGramiel_LW
 
                         if (rotationRestricted)
                         {
-                            LoneWolf.SetSkillEngineSkills(normalSkills);
+                            if (IsPay2WinGuardian())
+                                RestartPhaseTwoSkillEngine(
+                                    normalSkills,
+                                    preset.SkillMode
+                                );
+                            else
+                                LoneWolf.SetSkillEngineSkills(normalSkills);
+
                             rotationRestricted = false;
                             Core.Logger($"{LogPrefix} {playerAlias} restored its normal rotation on nuke cycle {nukeCycle}, attack 7.");
                         }
@@ -654,7 +685,12 @@ public class UltraGramiel_LW
                                 <= GetHealingHoldThreshold(nukeCycle)
                         )
                         {
-                            if (SuppressPlayerOneDuringHealingHold())
+                            if (IsPay2WinGuardian())
+                                RestartPhaseTwoSkillEngine(
+                                    GetHealingHoldSkills(),
+                                    SkillEngineMode.Simple
+                                );
+                            else if (SuppressPlayerOneDuringHealingHold())
                                 LoneWolf.SetOrdinarySkillsSuppressed(true);
                             else
                                 LoneWolf.SetSkillEngineSkills(GetHealingHoldSkills());
@@ -670,7 +706,12 @@ public class UltraGramiel_LW
                         break;
                     }
 
-                    if (SuppressPlayerOneDuringHealingHold())
+                    if (IsPay2WinGuardian())
+                        RestartPhaseTwoSkillEngine(
+                            normalSkills,
+                            preset.SkillMode
+                        );
+                    else if (SuppressPlayerOneDuringHealingHold())
                         LoneWolf.SetOrdinarySkillsSuppressed(false);
                     else
                         LoneWolf.SetSkillEngineSkills(normalSkills);
@@ -807,10 +848,41 @@ public class UltraGramiel_LW
             ? new[] { 3, 4, 2, 1 }
             : preset.Skills;
 
-    private int[] GetHealingHoldSkills() =>
-        LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
+    private int[] GetHealingHoldSkills()
+    {
+        if (UsesPay2WinCompositionBehavior())
+        {
+            if (LoneWolf.IsArmyPlayer(1))
+                return new[] { 1 };
+
+            if (LoneWolf.IsArmyPlayer(2))
+                return new[] { 3 };
+
+            if (LoneWolf.IsArmyPlayer(3))
+                return new[] { 2 };
+
+            return new[] { 2 };
+        }
+
+        return LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
             ? new[] { 3 }
             : new[] { 2 };
+    }
+
+    private void RestartPhaseTwoSkillEngine(
+        int[] skills,
+        SkillEngineMode mode
+    )
+    {
+        LoneWolf.StopSkillEngine();
+        LoneWolf.StartSkillEngine(
+            skills,
+            playerAlias,
+            true,
+            LogPrefix,
+            mode
+        );
+    }
 
     private float GetGramielHealthPercentage()
     {
@@ -854,10 +926,16 @@ public class UltraGramiel_LW
     }
 
     private bool IsPhaseTwoSlowdownOwner() =>
-        UsesDefaultCompositionBehavior()
-        && (
+        (
             LoneWolf.IsArmyPlayer(1)
-            || LoneWolf.IsArmyPlayer(3)
+            && (
+                UsesDefaultCompositionBehavior()
+                || UsesPay2WinCompositionBehavior()
+            )
+        )
+        || (
+            LoneWolf.IsArmyPlayer(3)
+            && UsesDefaultCompositionBehavior()
         );
 
     private int GetPhaseTwoTauntAttack()
@@ -890,10 +968,12 @@ public class UltraGramiel_LW
         while (LoneWolf.HasPacketDetection(nextDetection))
         {
             int cycle = nextDetection++;
-            if (!bothCrystalsAlive || !OwnsTauntCycle(cycle))
+            bool ownsCycle = OwnsTauntCycle(cycle);
+            int crystalMapId = GetAssignedCrystalMapId();
+
+            if (!bothCrystalsAlive || !ownsCycle)
                 continue;
 
-            int crystalMapId = GetAssignedCrystalMapId();
             LoneWolf.MaintainTarget(crystalMapId);
             RequestGramielTaunt(crystalMapId);
 
@@ -903,6 +983,7 @@ public class UltraGramiel_LW
                 || LoneWolf.IsArmyPlayer(4)
                 || IsShamanPlayer()
                 || IsReliableVerusDoomKnight()
+                || IsPay2WinGuardian()
             )
                 tauntTargetUntil = DateTimeOffset.Now.AddMilliseconds(
                     TauntTargetHold
@@ -1026,7 +1107,7 @@ public class UltraGramiel_LW
         }
 
         bool crystalBalancer = armyComposition
-            is ArmyComposition.Reliable
+            is ArmyComposition.Reliable or ArmyComposition.Pay2Win
             ? LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4)
             : UsesDefaultCompositionBehavior()
                 ? LoneWolf.IsArmyPlayer(4)
@@ -1078,10 +1159,17 @@ public class UltraGramiel_LW
         return openingOwner ? cycle % 2 == 1 : cycle % 2 == 0;
     }
 
-    private int GetAssignedCrystalMapId() =>
-        LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
+    private int GetAssignedCrystalMapId()
+    {
+        if (UsesPay2WinCompositionBehavior())
+            return LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(4)
+                ? CrystalAMapId
+                : CrystalBMapId;
+
+        return LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
             ? CrystalAMapId
             : CrystalBMapId;
+    }
 
     private void AdvanceDetections(ref int nextDetection)
     {
@@ -1182,6 +1270,9 @@ public class UltraGramiel_LW
     {
         if (LoneWolf.IsArmyPlayer(1))
         {
+            if (UsesPay2WinCompositionBehavior())
+                return LoneWolf.Guardian();
+
             if (armyComposition == ArmyComposition.Reliable)
                 return LoneWolf.VerusDoomKnight();
 
@@ -1214,7 +1305,10 @@ public class UltraGramiel_LW
         }
 
         ClassPreset lordOfOrder = LoneWolf.LordOfOrder();
-        lordOfOrder.WeaponEnhancement = WeaponSpecial.Valiance;
+        lordOfOrder.WeaponEnhancement =
+            UsesPay2WinCompositionBehavior()
+                ? WeaponSpecial.Awe_Blast
+                : WeaponSpecial.Valiance;
         return lordOfOrder;
     }
 
@@ -1224,6 +1318,13 @@ public class UltraGramiel_LW
 
     private bool IsReliableVerusDoomKnight() =>
         armyComposition == ArmyComposition.Reliable
+        && LoneWolf.IsArmyPlayer(1);
+
+    private bool UsesPay2WinCompositionBehavior() =>
+        armyComposition == ArmyComposition.Pay2Win;
+
+    private bool IsPay2WinGuardian() =>
+        UsesPay2WinCompositionBehavior()
         && LoneWolf.IsArmyPlayer(1);
 
     private bool SuppressPlayerOneDuringHealingHold() =>

@@ -22,6 +22,7 @@ public class UltraTyndarius_LW
         Stable,
         Reliable,
         Fast,
+        Pay2Win,
         Test,
     }
 
@@ -79,7 +80,7 @@ public class UltraTyndarius_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / SC / AP / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / AP / LR / LOO\nPay2Win: Guardian / AP / LR / LOO\nTest: LR / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -197,7 +198,8 @@ public class UltraTyndarius_LW
             if (!PrepareSafeRoom(preset) || !Sync("FIGHT_READY"))
                 return false;
 
-            if (LoneWolf.IsArmyPlayer(3))
+            int archPaladinPlayerNumber = GetArchPaladinPlayerNumber();
+            if (LoneWolf.IsArmyPlayer(archPaladinPlayerNumber))
             {
                 if (
                     !PrepareRighteousSeal()
@@ -286,13 +288,13 @@ public class UltraTyndarius_LW
 
     private bool PrepareRighteousSeal()
     {
-        Core.Logger($"{LogPrefix} playerThree starting Righteous Seal preparation.");
+        Core.Logger($"{LogPrefix} {playerAlias} starting Righteous Seal preparation.");
 
         while (!Bot.ShouldExit)
         {
             if (!Bot.Player.Alive)
             {
-                Core.Logger($"{LogPrefix} playerThree died during Righteous Seal preparation.");
+                Core.Logger($"{LogPrefix} {playerAlias} died during Righteous Seal preparation.");
 
                 while (!Bot.ShouldExit && !Bot.Player.Alive)
                     Bot.Sleep(RespawnPollDelay);
@@ -300,7 +302,7 @@ public class UltraTyndarius_LW
                 if (Bot.ShouldExit)
                     return false;
 
-                Core.Logger($"{LogPrefix} playerThree respawned and is retrying preparation.");
+                Core.Logger($"{LogPrefix} {playerAlias} respawned and is retrying preparation.");
             }
 
             if (!MoveToBossRoom(useDirectFlash: true))
@@ -313,7 +315,7 @@ public class UltraTyndarius_LW
 
             if (Bot.Target.GetAura(RighteousSealAura) != null)
             {
-                Core.Logger($"{LogPrefix} playerThree confirmed Righteous Seal.");
+                Core.Logger($"{LogPrefix} {playerAlias} confirmed Righteous Seal.");
                 return true;
             }
 
@@ -332,7 +334,7 @@ public class UltraTyndarius_LW
         if (!LoneWolf.SendArmySignal(signal))
             return false;
 
-        Core.Logger($"{LogPrefix} playerThree sent {signal}.");
+        Core.Logger($"{LogPrefix} {playerAlias} sent {signal}.");
         return true;
     }
 
@@ -343,7 +345,12 @@ public class UltraTyndarius_LW
 
         while (!Bot.ShouldExit)
         {
-            if (LoneWolf.HasArmySignal(signal, 3))
+            if (
+                LoneWolf.HasArmySignal(
+                    signal,
+                    GetArchPaladinPlayerNumber()
+                )
+            )
             {
                 Core.Logger($"{LogPrefix} {playerAlias} received {signal}.");
                 return true;
@@ -385,20 +392,23 @@ public class UltraTyndarius_LW
 
     private FightResult Fight(ClassPreset preset, int fightAttempt)
     {
-        if (LoneWolf.IsArmyPlayer(3))
+        int archPaladinPlayerNumber = GetArchPaladinPlayerNumber();
+        int bossTauntPartnerPlayerNumber =
+            armyComposition == ArmyComposition.Pay2Win ? 3 : 4;
+        if (LoneWolf.IsArmyPlayer(archPaladinPlayerNumber))
             return FightBossTaunter(
                 preset,
                 fightAttempt,
                 isArchPaladin: true,
-                partnerPlayerNumber: 4
+                partnerPlayerNumber: bossTauntPartnerPlayerNumber
             );
 
-        if (LoneWolf.IsArmyPlayer(4))
+        if (LoneWolf.IsArmyPlayer(bossTauntPartnerPlayerNumber))
             return FightBossTaunter(
                 preset,
                 fightAttempt,
                 isArchPaladin: false,
-                partnerPlayerNumber: 3
+                partnerPlayerNumber: archPaladinPlayerNumber
             );
 
         if (armyComposition == ArmyComposition.Test)
@@ -406,6 +416,16 @@ public class UltraTyndarius_LW
                 preset,
                 fightAttempt,
                 tauntLeftAdd: LoneWolf.IsArmyPlayer(2)
+            );
+
+        if (UsesFastFightRoles())
+            return FightDamageDealer(
+                preset,
+                fightAttempt,
+                tauntLeftAdd:
+                    armyComposition == ArmyComposition.Pay2Win
+                        ? LoneWolf.IsArmyPlayer(4)
+                        : LoneWolf.IsArmyPlayer(3)
             );
 
         if (!UsesDefaultFightRoles())
@@ -484,7 +504,11 @@ public class UltraTyndarius_LW
         return FinishFight(FightResult.Stopped);
     }
 
-    private FightResult FightDamageDealer(ClassPreset preset, int fightAttempt)
+    private FightResult FightDamageDealer(
+        ClassPreset preset,
+        int fightAttempt,
+        bool tauntLeftAdd = false
+    )
     {
         StartSkillEngine(preset);
         Core.Logger($"{LogPrefix} {playerAlias} started fighting.");
@@ -496,14 +520,22 @@ public class UltraTyndarius_LW
             if (result != FightResult.Continue)
                 return FinishFight(result);
 
-            int targetMapId = bossLocked
-                ? MainBossMapId
-                : GetPriorityTarget();
+            bool immediateTauntAccepted = tauntLeftAdd
+                && LoneWolf.IsMonsterAlive(FirstAddMapId)
+                && LoneWolf.RequestImmediateTaunt(FirstAddMapId);
 
-            if (targetMapId == MainBossMapId)
-                bossLocked = true;
+            if (!immediateTauntAccepted)
+            {
+                int targetMapId = bossLocked
+                    ? MainBossMapId
+                    : GetPriorityTarget();
 
-            LoneWolf.MaintainTarget(targetMapId);
+                if (targetMapId == MainBossMapId)
+                    bossLocked = true;
+
+                LoneWolf.MaintainTarget(targetMapId);
+            }
+
             Bot.Sleep(FightPollDelay);
         }
 
@@ -528,12 +560,12 @@ public class UltraTyndarius_LW
         string partnerName = (
             GetSetupOption<string>($"player{partnerPlayerNumber}")
         ).Trim();
-        string partnerAlias = isArchPaladin ? "playerFour" : "playerThree";
+        string partnerAlias = GetPlayerAlias(partnerPlayerNumber);
 
         if (isArchPaladin)
         {
             RequestBossTaunt(immediate: false);
-            Core.Logger($"{LogPrefix} playerThree requested the first boss taunt.");
+            Core.Logger($"{LogPrefix} {playerAlias} requested the first boss taunt.");
         }
 
         while (!Bot.ShouldExit)
@@ -888,6 +920,10 @@ public class UltraTyndarius_LW
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1))
+        {
+            if (armyComposition == ArmyComposition.Pay2Win)
+                return LoneWolf.Guardian();
+
             return armyComposition switch
             {
                 ArmyComposition.Stable => LoneWolf.KingsEcho(),
@@ -895,12 +931,20 @@ public class UltraTyndarius_LW
                 ArmyComposition.Fast => LoneWolf.ArcanaInvoker(),
                 _ => LoneWolf.LegionRevenant(),
             };
+        }
 
         if (LoneWolf.IsArmyPlayer(2))
-            return LoneWolf.StoneCrusher();
+            return UsesFastFightRoles()
+                ? LoneWolf.ArchPaladin()
+                : LoneWolf.StoneCrusher();
 
         if (LoneWolf.IsArmyPlayer(3))
+        {
+            if (UsesFastFightRoles())
+                return LoneWolf.LegionRevenant();
+
             return LoneWolf.ArchPaladin();
+        }
 
         return LoneWolf.LordOfOrder();
     }
@@ -909,14 +953,28 @@ public class UltraTyndarius_LW
         armyComposition == ArmyComposition.Default
         || armyComposition == ArmyComposition.Reliable;
 
-    private bool IsTaunterRole() =>
-        UsesDefaultFightRoles()
-        || LoneWolf.IsArmyPlayer(3)
-        || LoneWolf.IsArmyPlayer(4)
-        || (
-            armyComposition == ArmyComposition.Test
-            && LoneWolf.IsArmyPlayer(2)
-        );
+    private bool UsesFastFightRoles() =>
+        armyComposition
+            is ArmyComposition.Fast or ArmyComposition.Pay2Win;
+
+    private bool IsTaunterRole()
+    {
+        if (UsesFastFightRoles())
+            return LoneWolf.IsArmyPlayer(2)
+                || LoneWolf.IsArmyPlayer(3)
+                || LoneWolf.IsArmyPlayer(4);
+
+        return UsesDefaultFightRoles()
+            || LoneWolf.IsArmyPlayer(3)
+            || LoneWolf.IsArmyPlayer(4)
+            || (
+                armyComposition == ArmyComposition.Test
+                && LoneWolf.IsArmyPlayer(2)
+            );
+    }
+
+    private int GetArchPaladinPlayerNumber() =>
+        UsesFastFightRoles() ? 2 : 3;
 
     private string GetPlayerAlias()
     {
@@ -931,6 +989,15 @@ public class UltraTyndarius_LW
 
         return "playerFour";
     }
+
+    private static string GetPlayerAlias(int playerNumber) =>
+        playerNumber switch
+        {
+            1 => "playerOne",
+            2 => "playerTwo",
+            3 => "playerThree",
+            _ => "playerFour",
+        };
 
     private bool Sync(string step)
     {

@@ -23,6 +23,7 @@ public class UltraEzrajal_LW
         Default,
         Stable,
         Reliable,
+        Pay2Win,
     }
 
     private enum FightResult
@@ -78,7 +79,7 @@ public class UltraEzrajal_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -749,14 +750,21 @@ public class UltraEzrajal_LW
             if (armyComposition == ArmyComposition.Reliable)
                 return LoneWolf.VerusDoomKnight();
 
+            if (armyComposition == ArmyComposition.Pay2Win)
+                return LoneWolf.Guardian();
+
             return LoneWolf.LegionRevenant();
         }
 
         if (LoneWolf.IsArmyPlayer(2))
-            return LoneWolf.StoneCrusher();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.ArchPaladin()
+                : LoneWolf.StoneCrusher();
 
         if (LoneWolf.IsArmyPlayer(3))
-            return LoneWolf.ArchPaladin();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.LegionRevenant()
+                : LoneWolf.ArchPaladin();
 
         return LoneWolf.LordOfOrder();
     }

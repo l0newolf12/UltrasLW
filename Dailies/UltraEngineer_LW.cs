@@ -20,6 +20,7 @@ public class UltraEngineer_LW
         Default,
         Stable,
         Reliable,
+        Pay2Win,
     }
 
     private enum FightResult
@@ -68,7 +69,7 @@ public class UltraEngineer_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -414,14 +415,19 @@ public class UltraEngineer_LW
             {
                 ArmyComposition.Stable => LoneWolf.KingsEcho(),
                 ArmyComposition.Reliable => LoneWolf.VerusDoomKnight(),
+                ArmyComposition.Pay2Win => LoneWolf.Guardian(),
                 _ => LoneWolf.LegionRevenant(),
             };
 
         if (LoneWolf.IsArmyPlayer(2))
-            return LoneWolf.StoneCrusher();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.ArchPaladin()
+                : LoneWolf.StoneCrusher();
 
         if (LoneWolf.IsArmyPlayer(3))
-            return LoneWolf.ArchPaladin();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.LegionRevenant()
+                : LoneWolf.ArchPaladin();
 
         return LoneWolf.LordOfOrder();
     }

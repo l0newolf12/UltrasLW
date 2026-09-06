@@ -41,6 +41,7 @@ public class CLWSkillsTest
         Arachnomancer,
         Imperial_Chunin,
         SSOT,
+        Paladin_Chronomancer,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -177,11 +178,20 @@ public class CLWSkillsTest
             );
 
         if (usePotions)
+        {
+            if (preset.Elixir == "Divine Elixir")
+                preset.Elixir = LoneWolf.GetDivineElixir(
+                    preset,
+                    "tester",
+                    LogPrefix
+                );
+
             LoneWolf.PreparePotions(
                 preset.Tonic,
                 preset.Elixir,
                 preset.CombatPotion
             );
+        }
 
         if (Bot.ShouldExit)
             return;
@@ -265,6 +275,8 @@ public class CLWSkillsTest
             SkillPresetChoice.Arachnomancer => LoneWolf.Arachnomancer(),
             SkillPresetChoice.Imperial_Chunin => LoneWolf.ImperialChunin(),
             SkillPresetChoice.SSOT => LoneWolf.SSOT(),
+            SkillPresetChoice.Paladin_Chronomancer =>
+                LoneWolf.PaladinChronomancer(),
             _ => LoneWolf.LegionRevenant(),
         };
 }

@@ -21,6 +21,7 @@ public class UltraDage_LW
         Default,
         Stable,
         Reliable,
+        Pay2Win,
     }
 
     private enum FightResult
@@ -47,6 +48,7 @@ public class UltraDage_LW
     private const string MystifyScroll = "Scroll of Mystify";
     private const string NoxiousDecayAura = "Noxious Decay";
     private const string UnleashedDoomAura = "Unleashed Doom";
+    private const string DauntlessAura = "Dauntless";
     private const string FocusAura = "Focus";
     private const string DecayMessage =
         "I possess the full power of the Legion at my disposal.";
@@ -68,6 +70,7 @@ public class UltraDage_LW
     private ArmyComposition armyComposition;
     private bool masterMode;
     private UltraRunResult runResult = UltraRunResult.Failed;
+    private bool testDauntlessEnabled;
 
     public string OptionsStorage = "UltraDage_LW";
     public bool DontPreconfigure = true;
@@ -80,7 +83,7 @@ public class UltraDage_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: CSS / AP / VDK / AF",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -253,6 +256,7 @@ public class UltraDage_LW
             return false;
 
         if (GetSetupOption<bool>("UseEnhancements"))
+        {
             LoneWolf.PrepareEnhancements(
                 preset.BaseEnhancement,
                 preset.CapeEnhancement,
@@ -260,6 +264,11 @@ public class UltraDage_LW
                 preset.WeaponEnhancement,
                 weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
+
+            PrepareTestDauntlessFallback(preset);
+        }
+        else
+            DetectTestDauntless(preset);
 
         if (GetSetupOption<bool>("UsePotions"))
             LoneWolf.PreparePotions(
@@ -289,6 +298,9 @@ public class UltraDage_LW
 
     private void WarnIfHealthVampWeaponIsMissing()
     {
+        if (IsTestDauntlessUser() && testDauntlessEnabled)
+            return;
+
         foreach (var item in Bot.Inventory.Items)
         {
             if (
@@ -312,6 +324,60 @@ public class UltraDage_LW
                 );
 
             return;
+        }
+    }
+
+    private void PrepareTestDauntlessFallback(ClassPreset preset)
+    {
+        if (!IsTestDauntlessUser())
+            return;
+
+        DetectTestDauntless(preset);
+        if (testDauntlessEnabled || Bot.ShouldExit)
+            return;
+
+        preset.WeaponEnhancement = WeaponSpecial.Health_Vamp;
+        preset.WeaponEnhancementFallbacks = Array.Empty<WeaponSpecial>();
+        LoneWolf.PrepareEnhancements(
+            preset.BaseEnhancement,
+            preset.CapeEnhancement,
+            preset.HelmEnhancement,
+            preset.WeaponEnhancement,
+            weaponFallbacks: preset.WeaponEnhancementFallbacks
+        );
+        ApplyTestDauntlessSkillRules(preset);
+        Core.Logger(
+            $"{LogPrefix} {playerAlias} did not confirm {DauntlessAura}; using Health Vamp with the normal Dage skill restriction."
+        );
+    }
+
+    private void DetectTestDauntless(ClassPreset preset)
+    {
+        if (!IsTestDauntlessUser())
+            return;
+
+        testDauntlessEnabled = Bot.Self.HasActiveAura(DauntlessAura);
+        ApplyTestDauntlessSkillRules(preset);
+
+        if (testDauntlessEnabled)
+            Core.Logger(
+                $"{LogPrefix} {playerAlias} confirmed {DauntlessAura}; its locked Dage skill is enabled."
+            );
+    }
+
+    private void ApplyTestDauntlessSkillRules(ClassPreset preset)
+    {
+        if (
+            armyComposition == ArmyComposition.Pay2Win
+            && LoneWolf.IsArmyPlayer(4)
+        )
+        {
+            preset.Skills = testDauntlessEnabled
+                ? new[] { 3, 4, 1, 2 }
+                : new[] { 4, 1, 2 };
+            preset.SkillMode = testDauntlessEnabled
+                ? SkillEngineMode.Simple
+                : SkillEngineMode.ArchFiendNoHealing;
         }
     }
 
@@ -379,9 +445,14 @@ public class UltraDage_LW
 
     private bool StartDecayDetector(bool mystifyMode)
     {
-        bool detectsDecay = LoneWolf.IsArmyPlayer(2)
+        bool detectsDecay = IsPrimaryDecayHolder()
             || (
                 armyComposition == ArmyComposition.Default
+                && LoneWolf.IsArmyPlayer(4)
+                && !mystifyMode
+            )
+            || (
+                armyComposition == ArmyComposition.Pay2Win
                 && LoneWolf.IsArmyPlayer(4)
                 && !mystifyMode
             );
@@ -440,11 +511,7 @@ public class UltraDage_LW
         string partnerName = (
             GetSetupOption<string>($"player{partnerPlayerNumber}")
         ).Trim();
-        string partnerAlias = partnerPlayerNumber == 1
-            ? "playerOne"
-            : partnerPlayerNumber == 3
-                ? "playerThree"
-                : "playerFour";
+        string partnerAlias = GetPlayerAlias(partnerPlayerNumber);
         bool ownsFocusCycle = false;
         bool waitingForOwnFocus = openingOwner;
         bool partnerDeathObserved = false;
@@ -694,7 +761,10 @@ public class UltraDage_LW
                 || LoneWolf.IsArmyPlayer(4)
                     && armyComposition == ArmyComposition.Default
                     && !mystifyMode
-                    && cycle % 2 == 0;
+                    && cycle % 2 == 0
+                || LoneWolf.IsArmyPlayer(4)
+                    && armyComposition == ArmyComposition.Pay2Win
+                    && !mystifyMode;
 
             if (!ownsCycle)
                 continue;
@@ -806,7 +876,10 @@ public class UltraDage_LW
             && LoneWolf.IsArmyPlayer(1);
         bool dageVerusDoomKnight =
             armyComposition == ArmyComposition.Reliable
-            && LoneWolf.IsArmyPlayer(1);
+                && LoneWolf.IsArmyPlayer(1)
+            || armyComposition == ArmyComposition.Pay2Win
+                && LoneWolf.IsArmyPlayer(3)
+                && !testDauntlessEnabled;
 
         LoneWolf.StartSkillEngine(
             preset.Skills,
@@ -1025,6 +1098,8 @@ public class UltraDage_LW
                 preset = LoneWolf.KingsEcho();
             else if (armyComposition == ArmyComposition.Reliable)
                 preset = LoneWolf.VerusDoomKnight();
+            else if (armyComposition == ArmyComposition.Pay2Win)
+                preset = LoneWolf.ChronoShadowHunter(gunslingerMode: false);
             else
             {
                 preset = LoneWolf.LegionRevenant();
@@ -1033,22 +1108,51 @@ public class UltraDage_LW
         }
         else if (LoneWolf.IsArmyPlayer(2))
         {
-            preset = LoneWolf.StoneCrusher();
-            preset.Skills = new[] { 2, 4, 1 };
+            if (armyComposition == ArmyComposition.Pay2Win)
+            {
+                preset = LoneWolf.ArchPaladin();
+                preset.Skills = new[] { 3, 1, 4 };
+            }
+            else
+            {
+                preset = LoneWolf.StoneCrusher();
+                preset.Skills = new[] { 2, 4, 1 };
+            }
         }
         else if (LoneWolf.IsArmyPlayer(3))
         {
-            preset = LoneWolf.ArchPaladin();
-            preset.Skills = new[] { 3, 1, 4 };
+            if (armyComposition == ArmyComposition.Pay2Win)
+                preset = LoneWolf.VerusDoomKnight();
+            else
+            {
+                preset = LoneWolf.ArchPaladin();
+                preset.Skills = new[] { 3, 1, 4 };
+            }
         }
         else
         {
-            preset = LoneWolf.LordOfOrder();
-            preset.Skills = new[] { 3, 1, 4 };
+            if (armyComposition == ArmyComposition.Pay2Win)
+                preset = LoneWolf.ArchFiend();
+            else
+            {
+                preset = LoneWolf.LordOfOrder();
+                preset.Skills = new[] { 3, 1, 4 };
+            }
         }
 
-        preset.WeaponEnhancement = WeaponSpecial.Health_Vamp;
-        preset.WeaponEnhancementFallbacks = Array.Empty<WeaponSpecial>();
+        if (IsTestDauntlessUser())
+        {
+            preset.WeaponEnhancement = WeaponSpecial.Dauntless;
+            preset.WeaponEnhancementFallbacks = new[]
+            {
+                WeaponSpecial.Health_Vamp,
+            };
+        }
+        else
+        {
+            preset.WeaponEnhancement = WeaponSpecial.Health_Vamp;
+            preset.WeaponEnhancementFallbacks = Array.Empty<WeaponSpecial>();
+        }
         preset.CapeEnhancement = CapeSpecial.Vainglory;
 
         if (!UsesFullPotionSet())
@@ -1059,6 +1163,9 @@ public class UltraDage_LW
 
     private bool IsEnrageTaunter()
     {
+        if (armyComposition == ArmyComposition.Pay2Win)
+            return LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(3);
+
         if (armyComposition == ArmyComposition.Stable)
             return LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4);
 
@@ -1067,6 +1174,9 @@ public class UltraDage_LW
 
     private bool IsOpeningTauntOwner()
     {
+        if (armyComposition == ArmyComposition.Pay2Win)
+            return LoneWolf.IsArmyPlayer(2);
+
         if (armyComposition == ArmyComposition.Stable)
             return LoneWolf.IsArmyPlayer(3);
 
@@ -1075,13 +1185,18 @@ public class UltraDage_LW
 
     private int GetTauntPartnerPlayerNumber(bool openingOwner)
     {
+        if (armyComposition == ArmyComposition.Pay2Win)
+            return openingOwner ? 3 : 2;
+
         if (armyComposition == ArmyComposition.Stable)
             return openingOwner ? 4 : 3;
 
         return openingOwner ? 3 : 1;
     }
 
-    private bool IsPrimaryDecayHolder() => LoneWolf.IsArmyPlayer(2);
+    private bool IsPrimaryDecayHolder() =>
+        armyComposition != ArmyComposition.Pay2Win
+        && LoneWolf.IsArmyPlayer(2);
 
     private bool IsMystifyHolder() =>
         armyComposition != ArmyComposition.Stable
@@ -1089,15 +1204,26 @@ public class UltraDage_LW
 
     private bool IsDamageDealer() =>
         LoneWolf.IsArmyPlayer(1)
-        && armyComposition == ArmyComposition.Stable;
+        && (
+            armyComposition == ArmyComposition.Stable
+            || armyComposition == ArmyComposition.Pay2Win
+        );
 
     private bool IsSafeHealer() =>
-        LoneWolf.IsArmyPlayer(3)
-        || LoneWolf.IsArmyPlayer(4);
+        armyComposition == ArmyComposition.Pay2Win
+            ? LoneWolf.IsArmyPlayer(2)
+            : LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4);
 
     private bool UsesFullPotionSet() =>
         LoneWolf.IsArmyPlayer(1)
-        && armyComposition == ArmyComposition.Stable;
+        && (
+            armyComposition == ArmyComposition.Stable
+            || armyComposition == ArmyComposition.Pay2Win
+        );
+
+    private bool IsTestDauntlessUser() =>
+        armyComposition == ArmyComposition.Pay2Win
+        && (LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4));
 
     private string GetPlayerAlias()
     {
@@ -1112,6 +1238,15 @@ public class UltraDage_LW
 
         return "playerFour";
     }
+
+    private static string GetPlayerAlias(int playerNumber) =>
+        playerNumber switch
+        {
+            1 => "playerOne",
+            2 => "playerTwo",
+            3 => "playerThree",
+            _ => "playerFour",
+        };
 
     private bool Sync(string step)
     {
