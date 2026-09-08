@@ -1,6 +1,6 @@
 how to install: 
 1. press green code button -> download as zip
-2. make a new folder named `UltrasLW` in skua scripts folder at `AppData/Skua/Scripts`
+2. make a new folder named `UltrasLW` in skua scripts folder at `AppData\Roaming\Skua\Scripts`
 3. put all files in the newly made folder named `UltrasLW` 
 
 full path is `AppData/Skua/Scripts/UltrasLW` if you did it correctly
