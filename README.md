@@ -3,7 +3,7 @@ how to install:
 2. make a new folder named `UltrasLW` in skua scripts folder at `AppData\Roaming\Skua\Scripts`
 3. put all files in the newly made folder named `UltrasLW` 
 
-full path is `AppData/Skua/Scripts/UltrasLW` if you did it correctly
+full path is `AppData\Roaming\Skua\Scripts\UltrasLW` if you did it correctly
 
 
 
