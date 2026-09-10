@@ -27,7 +27,7 @@ public class UltraSpeaker_LW
     public enum ArmyComposition
     {
         Default = 0,
-        Stable = 1,
+        Reliable = 1,
         Pay2Win = 2,
     }
 
@@ -177,7 +177,7 @@ public class UltraSpeaker_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP",
+            "Default: LR / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -210,6 +210,7 @@ public class UltraSpeaker_LW
     {
         Bot.Skills.Stop();
         Bot.Options.InfiniteRange = true;
+        LoneWolf.SetAntiLag();
         Bot.Config?.Configure();
 
         try
@@ -1171,12 +1172,12 @@ public class UltraSpeaker_LW
             if (armyComposition == ArmyComposition.Pay2Win)
                 return LoneWolf.Guardian();
 
-            ClassPreset preset = UsesStableComposition()
+            ClassPreset preset = UsesReliableComposition()
                 ? LoneWolf.VerusDoomKnight()
                 : LoneWolf.LegionRevenant();
             preset.CapeEnhancement = CapeSpecial.Penitence;
 
-            if (!UsesStableComposition())
+            if (!UsesReliableComposition())
                 preset.HelmEnhancement = HelmSpecial.None;
 
             return preset;
@@ -1228,8 +1229,8 @@ public class UltraSpeaker_LW
         return lordOfOrder;
     }
 
-    private bool UsesStableComposition() =>
-        armyComposition == ArmyComposition.Stable;
+    private bool UsesReliableComposition() =>
+        armyComposition == ArmyComposition.Reliable;
 
     private string GetPlayerAlias()
     {

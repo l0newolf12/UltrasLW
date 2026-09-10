@@ -1,7 +1,7 @@
 /*
-name: Kathool Depths LW
-description: Five-to-seven-player CoreLoneWolf Army script for God of the Depths.
-tags: ultra, kathool depths, god of the depths, seven-player, army, corelonewolf
+name: Army Kasuko LW
+description: Four-to-seven-player CoreLoneWolf Army script for Kasuko.
+tags: kasuko, seven-player, army, corelonewolf
 */
 
 //cs_include Scripts/CoreBots.cs
@@ -14,12 +14,11 @@ using Skua.Core.Options;
 
 #nullable enable
 
-public class KathoolDepths_LW
+public class ArmyKasuko_LW
 {
     public enum ArmyComposition
     {
         Default,
-        Stable,
     }
 
     private enum FightResult
@@ -33,24 +32,17 @@ public class KathoolDepths_LW
     private CoreBots Core => CoreBots.Instance;
     private static readonly CoreLoneWolf LoneWolf = new();
 
-    private const string LogPrefix = "Kathool Depths LW";
-    private const string SyncFileName = "KathoolDepths_LW.sync";
-    private const string MapName = "kathooldepths";
+    private const string LogPrefix = "Army Kasuko LW";
+    private const string SyncFileName = "ArmyKasuko_LW.sync";
+    private const string MapName = "lavarockshore";
     private const string SafeCell = "Enter";
     private const string SafePad = "Spawn";
     private const string BossCell = "r2";
     private const string BossPad = "Left";
-    private const string Vigil = "Vigil";
-    private const string PacketCommand = "ct";
-    private const string ResistPacketText = "cannot resist";
-    private const int UltraQuestId = 9350;
-    private const int MinimumLevel = 80;
-    private const int VigilShopId = 2322;
-    private const int VigilRestockThreshold = 100;
-    private const int VigilMaxStack = 1000;
-    private const int FirstTargetMapId = 3;
-    private const int SecondTargetMapId = 1;
-    private const int BossMapId = 2;
+    private const int DailyQuestId = 9254;
+    private const int MinimumLevel = 75;
+    private const int FirstTargetMapId = 1;
+    private const int SecondTargetMapId = 2;
     private const int FightPollDelay = 100;
     private const int RespawnPollDelay = 500;
     private const int MaxFightAttempts = 3;
@@ -61,8 +53,14 @@ public class KathoolDepths_LW
     private int armyPlayerCount;
     private int privateRoomNumber;
 
-    public string OptionsStorage = "KathoolDepths_LW";
+    public string OptionsStorage = "ArmyKasuko_LW";
     public bool DontPreconfigure = true;
+    public static Option<string> player5 = new(
+        "player5",
+        "Player 5 (Optional)",
+        "Player 5 (Optional) account name.",
+        string.Empty
+    );
     public static Option<string> player6 = new(
         "player6",
         "Player 6 (Optional)",
@@ -81,14 +79,13 @@ public class KathoolDepths_LW
         LoneWolf.player2,
         LoneWolf.player3,
         LoneWolf.player4,
-        LoneWolf.player5,
+        player5,
         player6,
         player7,
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO / VDK / Bard / Shaman\n"
-                + "Stable: KE / SC / AP / LOO / VDK / Bard / AF",
+            "Default: LR / SC / AP / LOO / VDK / Bard / Shaman",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -100,7 +97,7 @@ public class KathoolDepths_LW
         new Option<bool>(
             "UsePotions",
             "Use Potions",
-            "Prepare and use the assigned tonic and elixir. Vigil is always required.",
+            "Prepare and use the assigned potion loadout.",
             true
         ),
         new Option<bool>(
@@ -124,7 +121,6 @@ public class KathoolDepths_LW
         }
         finally
         {
-            LoneWolf.StopPacketDetector();
             LoneWolf.StopSkillEngine();
         }
     }
@@ -137,10 +133,12 @@ public class KathoolDepths_LW
         if (!LoneWolf.StartArmySync(SyncFileName, armyPlayerCount))
             return;
 
+        playerAlias = GetPlayerAlias();
         ClassPreset preset = GetClassPreset();
+
         if (
             !LoneWolf.ValidateUltraAccess(
-                UltraQuestId,
+                DailyQuestId,
                 0,
                 string.Empty,
                 MinimumLevel,
@@ -150,12 +148,11 @@ public class KathoolDepths_LW
         )
             return;
 
-        playerAlias = GetPlayerAlias();
         Core.Logger(
             $"{LogPrefix} started as {playerAlias} using {armyComposition} composition."
         );
 
-        LoneWolf.AcceptUltraQuest(UltraQuestId);
+        LoneWolf.AcceptUltraQuest(DailyQuestId);
 
         if (!Prepare(preset) || !Sync("SETUP_DONE"))
             return;
@@ -164,7 +161,7 @@ public class KathoolDepths_LW
             return;
 
         Core.Jump(SafeCell, SafePad);
-        LoneWolf.CompleteUltraQuest(UltraQuestId);
+        LoneWolf.CompleteUltraQuest(DailyQuestId);
 
         if (Bot.ShouldExit || !Sync("FINISH"))
             return;
@@ -177,8 +174,23 @@ public class KathoolDepths_LW
         armyComposition = Bot.Config!.Get<ArmyComposition>("ArmyComposition");
         privateRoomNumber = Bot.Config.Get<int>("PrivateRoomNumber");
 
+        string playerFive = Bot.Config.Get<string>("player5")?.Trim() ?? string.Empty;
         string playerSix = Bot.Config.Get<string>("player6")?.Trim() ?? string.Empty;
         string playerSeven = Bot.Config.Get<string>("player7")?.Trim() ?? string.Empty;
+
+        if (
+            string.IsNullOrEmpty(playerFive)
+            && (!string.IsNullOrEmpty(playerSix) || !string.IsNullOrEmpty(playerSeven))
+        )
+        {
+            Core.Logger(
+                "Player 5 is required when Player 6 or Player 7 is configured.",
+                "ValidateOptions",
+                messageBox: true
+            );
+            return false;
+        }
+
         if (string.IsNullOrEmpty(playerSix) && !string.IsNullOrEmpty(playerSeven))
         {
             Core.Logger(
@@ -193,7 +205,9 @@ public class KathoolDepths_LW
             ? 7
             : !string.IsNullOrEmpty(playerSix)
                 ? 6
-                : 5;
+                : !string.IsNullOrEmpty(playerFive)
+                    ? 5
+                    : 4;
 
         return LoneWolf.ValidatePrivateRoomNumber(privateRoomNumber);
     }
@@ -226,63 +240,10 @@ public class KathoolDepths_LW
             );
         }
 
-        if (Bot.ShouldExit || !PrepareVigil())
+        if (Bot.ShouldExit)
             return false;
 
         Core.Logger($"{LogPrefix} {playerAlias} finished setup.");
-        return true;
-    }
-
-    private bool PrepareVigil()
-    {
-        if (Bot.Flash.GetGameObject("ui.mcPopup.currentLabel") != "\"Bank\"")
-            Bot.Bank.Open();
-
-        Bot.Bank.Load(waitForLoad: false);
-        Bot.Wait.ForTrue(() => Bot.Bank.Contains(Vigil), 20);
-
-        if (Bot.Bank.Contains(Vigil))
-        {
-            if (!Bot.Inventory.Contains(Vigil) && !Core.HasSpace)
-            {
-                return Fatal(
-                    "Vigil is banked but there is no inventory space to move it.",
-                    "PrepareVigil"
-                );
-            }
-
-            int quantityBefore = Bot.Inventory.GetQuantity(Vigil);
-            Bot.Bank.EnsureToInventory(Vigil);
-            Bot.Wait.ForTrue(
-                () => Bot.Inventory.GetQuantity(Vigil) > quantityBefore,
-                14
-            );
-
-            if (!Bot.Inventory.Contains(Vigil))
-                return Fatal("Vigil could not be moved from bank.", "PrepareVigil");
-
-            Core.Logger("Vigil moved from bank.", "PrepareVigil");
-        }
-
-        Core.Join($"{MapName}-{privateRoomNumber}", SafeCell, SafePad);
-
-        if (Bot.Inventory.GetQuantity(Vigil) < VigilRestockThreshold)
-            Core.BuyItem(MapName, VigilShopId, Vigil, VigilMaxStack);
-
-        int quantity = Bot.Inventory.GetQuantity(Vigil);
-        if (quantity <= 0)
-            return Fatal("Vigil could not be obtained. The fight cannot start.", "PrepareVigil");
-
-        if (quantity < VigilRestockThreshold)
-        {
-            Core.Logger(
-                $"Vigil preparation ended at {quantity}. Continuing.",
-                "PrepareVigil"
-            );
-        }
-        else
-            Core.Logger($"Vigil available at {quantity}.", "PrepareVigil");
-
         return true;
     }
 
@@ -297,29 +258,8 @@ public class KathoolDepths_LW
             );
         }
 
-        if (!EquipVigil())
-            return false;
-
         LoneWolf.GenericPrebuff();
         return !Bot.ShouldExit;
-    }
-
-    private bool EquipVigil()
-    {
-        if (!Bot.Inventory.Contains(Vigil))
-            return Fatal("Vigil is not in inventory. The fight cannot start.", "EquipVigil");
-
-        if (!Bot.Inventory.IsEquipped(Vigil))
-        {
-            Bot.Inventory.EquipUsableItem(Vigil);
-            Bot.Wait.ForItemEquip(Vigil);
-        }
-
-        if (!Bot.Inventory.IsEquipped(Vigil))
-            return Fatal("Vigil could not be equipped. The fight cannot start.", "EquipVigil");
-
-        Core.Logger("Vigil equipped.", "EquipVigil");
-        return true;
     }
 
     private bool RunFightAttempts(ClassPreset preset)
@@ -332,35 +272,15 @@ public class KathoolDepths_LW
         {
             Core.Join($"{MapName}-{privateRoomNumber}", SafeCell, SafePad);
 
-            if (!PrepareSafeRoom(preset))
+            if (!PrepareSafeRoom(preset) || !Sync("FIGHT_READY"))
                 return false;
 
-            if (!LoneWolf.StartPacketDetector(PacketCommand, ResistPacketText))
-            {
-                return Fatal(
-                    "The Vigil packet detector could not be started.",
-                    "RunFightAttempts"
-                );
-            }
+            Core.Jump(BossCell, BossPad);
 
-            FightResult result;
-            try
-            {
-                if (!Sync("FIGHT_READY"))
-                    return false;
+            if (Bot.ShouldExit || !Sync("START_FIGHT"))
+                return false;
 
-                Core.Jump(BossCell, BossPad);
-
-                if (Bot.ShouldExit || !Sync("START_FIGHT"))
-                    return false;
-
-                result = Fight(preset, fightAttempt);
-            }
-            finally
-            {
-                LoneWolf.StopPacketDetector();
-            }
-
+            FightResult result = Fight(preset, fightAttempt);
             if (result == FightResult.Defeated)
                 return true;
 
@@ -384,12 +304,14 @@ public class KathoolDepths_LW
             playerAlias,
             false,
             LogPrefix,
-            preset.SkillMode
+            preset.SkillMode,
+            maintainedPotion: Bot.Config!.Get<bool>("UsePotions")
+                ? preset.CombatPotion
+                : null
         );
         Core.Logger($"{LogPrefix} {playerAlias} started fighting attempt {fightAttempt}.");
 
-        bool bossObservedAlive = false;
-        int nextResistDetection = 1;
+        bool kasukoObservedAlive = false;
 
         while (!Bot.ShouldExit)
         {
@@ -405,8 +327,6 @@ public class KathoolDepths_LW
 
                 while (!Bot.ShouldExit && !Bot.Player.Alive)
                 {
-                    ProcessResistDetections(ref nextResistDetection, requestVigil: false);
-
                     if (LoneWolf.ShouldResetFight(fightAttempt, DeathResetThreshold))
                     {
                         StopFightCombat();
@@ -433,77 +353,34 @@ public class KathoolDepths_LW
                 continue;
             }
 
-            bool bossAlive = LoneWolf.IsMonsterAlive(BossMapId);
-            if (bossAlive)
-                bossObservedAlive = true;
-            else if (bossObservedAlive)
+            bool firstTargetAlive = LoneWolf.IsMonsterAlive(FirstTargetMapId);
+            bool secondTargetAlive = LoneWolf.IsMonsterAlive(SecondTargetMapId);
+
+            if (secondTargetAlive)
+                kasukoObservedAlive = true;
+            else if (kasukoObservedAlive)
                 break;
 
-            int targetMapId = GetCurrentTargetMapId();
-            if (targetMapId > 0)
-                LoneWolf.MaintainTarget(targetMapId);
+            if (firstTargetAlive)
+                LoneWolf.MaintainTarget(FirstTargetMapId);
+            else if (secondTargetAlive)
+                LoneWolf.MaintainTarget(SecondTargetMapId);
 
-            ProcessResistDetections(ref nextResistDetection, requestVigil: true);
             Bot.Sleep(FightPollDelay);
         }
 
         StopFightCombat();
 
-        if (Bot.ShouldExit || !bossObservedAlive)
+        if (Bot.ShouldExit || !kasukoObservedAlive)
             return FightResult.Stopped;
 
-        Core.Logger($"{LogPrefix} {playerAlias} confirmed God of the Depths defeated.");
+        Core.Logger($"{LogPrefix} {playerAlias} confirmed Kasuko encounter defeated.");
         return FightResult.Defeated;
-    }
-
-    private int GetCurrentTargetMapId()
-    {
-        bool focusBoss =
-            armyComposition == ArmyComposition.Stable
-                ? LoneWolf.IsArmyPlayer(1)
-                    || LoneWolf.IsArmyPlayer(2)
-                    || LoneWolf.IsArmyPlayer(5)
-                    || LoneWolf.IsArmyPlayer(6)
-                : LoneWolf.IsArmyPlayer(2)
-                    || LoneWolf.IsArmyPlayer(5)
-                    || LoneWolf.IsArmyPlayer(6)
-                    || LoneWolf.IsArmyPlayer(7);
-
-        if (focusBoss)
-            return LoneWolf.IsMonsterAlive(BossMapId) ? BossMapId : 0;
-
-        if (LoneWolf.IsMonsterAlive(FirstTargetMapId))
-            return FirstTargetMapId;
-
-        if (LoneWolf.IsMonsterAlive(SecondTargetMapId))
-            return SecondTargetMapId;
-
-        return LoneWolf.IsMonsterAlive(BossMapId) ? BossMapId : 0;
-    }
-
-    private void ProcessResistDetections(
-        ref int nextResistDetection,
-        bool requestVigil
-    )
-    {
-        while (LoneWolf.HasPacketDetection(nextResistDetection))
-        {
-            if (requestVigil)
-            {
-                LoneWolf.RequestAbsolutePrioritySkill(5);
-                Core.Logger(
-                    $"{LogPrefix} {playerAlias} requested Vigil for resist detection {nextResistDetection}."
-                );
-            }
-
-            nextResistDetection++;
-        }
     }
 
     private bool HandleFightReset(int fightAttempt)
     {
-        LoneWolf.StopSkillEngine();
-        Bot.Combat.CancelTarget();
+        StopFightCombat();
 
         while (!Bot.ShouldExit && !Bot.Player.Alive)
         {
@@ -519,10 +396,13 @@ public class KathoolDepths_LW
 
         if (!IsInSafeRoom())
         {
-            return Fatal(
+            Core.Logger(
                 $"{LogPrefix} {playerAlias} could not reach the safe room after reset.",
-                "HandleFightReset"
+                "HandleFightReset",
+                messageBox: true,
+                stopBot: true
             );
+            return false;
         }
 
         return Sync($"FIGHT_RESET_{fightAttempt}_SAFE");
@@ -537,9 +417,7 @@ public class KathoolDepths_LW
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1))
-            return armyComposition == ArmyComposition.Stable
-                ? LoneWolf.KingsEcho()
-                : LoneWolf.LegionRevenant();
+            return LoneWolf.LegionRevenant();
 
         if (LoneWolf.IsArmyPlayer(2))
             return LoneWolf.StoneCrusher();
@@ -556,12 +434,7 @@ public class KathoolDepths_LW
         if (LoneWolf.IsArmyPlayer(6))
             return LoneWolf.Bard();
 
-        if (armyComposition == ArmyComposition.Stable)
-            return LoneWolf.ArchFiend();
-
-        ClassPreset shaman = LoneWolf.Shaman();
-        shaman.HelmEnhancement = HelmSpecial.Examen;
-        return shaman;
+        return LoneWolf.Shaman();
     }
 
     private string GetPlayerAlias()
@@ -599,12 +472,6 @@ public class KathoolDepths_LW
 
         Core.Logger($"{LogPrefix} {playerAlias} continued from {step}.");
         return true;
-    }
-
-    private bool Fatal(string message, string caller)
-    {
-        Core.Logger(message, caller, messageBox: true, stopBot: true);
-        return false;
     }
 
     private void StopArmyAfterFailedAttempts()

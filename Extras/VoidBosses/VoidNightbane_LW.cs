@@ -129,6 +129,7 @@ public class VoidNightbane_LW
     {
         Bot.Skills.Stop();
         Bot.Options.InfiniteRange = true;
+        LoneWolf.SetAntiLag();
         Bot.Config?.Configure();
 
         try

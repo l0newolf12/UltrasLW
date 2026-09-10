@@ -113,6 +113,7 @@ public class UltraEzrajal_LW
         Bot.Skills.Stop();
         Bot.UltraBossHelper.DisableCounterAttack();
         Bot.Options.InfiniteRange = true;
+        LoneWolf.SetAntiLag();
         Bot.Config?.Configure();
 
         try
@@ -538,12 +539,20 @@ public class UltraEzrajal_LW
 
     private FightResult Fight(ClassPreset preset, int fightAttempt)
     {
+        bool useSimpleVdkEngine =
+            armyComposition == ArmyComposition.Reliable
+            && LoneWolf.IsArmyPlayer(1)
+            && GetUltraOption<bool>(
+                "UltraEzrajalSkipManaLock",
+                "SkipManaLock"
+            );
+
         LoneWolf.StartSkillEngine(
             preset.Skills,
             playerAlias,
             false,
             LogPrefix,
-            preset.SkillMode
+            useSimpleVdkEngine ? SkillEngineMode.Simple : preset.SkillMode
         );
         Core.Logger($"{LogPrefix} {playerAlias} started fighting.");
 

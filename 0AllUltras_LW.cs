@@ -170,7 +170,7 @@ public class AllUltras_LW
         new Option<UltraDrakath_LW.ArmyComposition>(
             "ChampionDrakathComposition",
             "→ Champion Drakath Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nPay2Win2: Guardian / PCM / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nPay2Win2: Guardian / PCM / LR / LOO\nTest: AI / AP / LR / LOO\nTest2: AI / PCM / LR / LOO",
             UltraDrakath_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -230,7 +230,7 @@ public class AllUltras_LW
         new Option<UltraGramiel_LW.ArmyComposition>(
             "UltraGramielComposition",
             "→ Ultra Gramiel Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO\nTest: VDK / SC / AP / LOO",
             UltraGramiel_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -242,7 +242,7 @@ public class AllUltras_LW
         new Option<UltraSpeaker_LW.ArmyComposition>(
             "UltraSpeakerComposition",
             "→ Ultra Speaker Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP",
+            "Default: LR / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP",
             UltraSpeaker_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -257,6 +257,7 @@ public class AllUltras_LW
     {
         Bot.Skills.Stop();
         Bot.Options.InfiniteRange = true;
+        LoneWolf.SetAntiLag();
         Bot.Config?.Configure();
 
         Run();

@@ -115,6 +115,7 @@ public class ArmyNightmareCarnax_LW
         Bot.Skills.Stop();
         Bot.Options.InfiniteRange = true;
         Bot.Options.SkipCutscenes = true;
+        LoneWolf.SetAntiLag();
         Bot.Config?.Configure();
 
         try

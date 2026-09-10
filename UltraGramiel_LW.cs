@@ -22,6 +22,7 @@ public class UltraGramiel_LW
         Optimized = 1,
         Reliable = 2,
         Pay2Win = 3,
+        Test = 4,
     }
 
     private enum PhaseResult
@@ -99,7 +100,7 @@ public class UltraGramiel_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO\nTest: VDK / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -126,6 +127,7 @@ public class UltraGramiel_LW
     {
         Bot.Skills.Stop();
         Bot.Options.InfiniteRange = true;
+        LoneWolf.SetAntiLag();
         Bot.Config?.Configure();
 
         try
@@ -478,7 +480,11 @@ public class UltraGramiel_LW
             playerAlias,
             true,
             LogPrefix,
-            preset.SkillMode
+            preset.SkillMode,
+            blockedSimpleSkill: IsPay2WinGuardian() ? 4 : 0,
+            blockedSimpleSkillTargetAura: IsPay2WinGuardian()
+                ? InvulnerableAura
+                : string.Empty
         );
 
         Core.Logger($"{LogPrefix} {playerAlias} started Phase 2.");
@@ -880,7 +886,11 @@ public class UltraGramiel_LW
             playerAlias,
             true,
             LogPrefix,
-            mode
+            mode,
+            blockedSimpleSkill: IsPay2WinGuardian() ? 4 : 0,
+            blockedSimpleSkillTargetAura: IsPay2WinGuardian()
+                ? InvulnerableAura
+                : string.Empty
         );
     }
 
@@ -1107,7 +1117,9 @@ public class UltraGramiel_LW
         }
 
         bool crystalBalancer = armyComposition
-            is ArmyComposition.Reliable or ArmyComposition.Pay2Win
+            is ArmyComposition.Reliable
+                or ArmyComposition.Pay2Win
+                or ArmyComposition.Test
             ? LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4)
             : UsesDefaultCompositionBehavior()
                 ? LoneWolf.IsArmyPlayer(4)
@@ -1273,7 +1285,10 @@ public class UltraGramiel_LW
             if (UsesPay2WinCompositionBehavior())
                 return LoneWolf.Guardian();
 
-            if (armyComposition == ArmyComposition.Reliable)
+            if (
+                armyComposition
+                    is ArmyComposition.Reliable or ArmyComposition.Test
+            )
                 return LoneWolf.VerusDoomKnight();
 
             if (armyComposition == ArmyComposition.Optimized)
@@ -1307,6 +1322,7 @@ public class UltraGramiel_LW
         ClassPreset lordOfOrder = LoneWolf.LordOfOrder();
         lordOfOrder.WeaponEnhancement =
             UsesPay2WinCompositionBehavior()
+            || armyComposition == ArmyComposition.Test
                 ? WeaponSpecial.Awe_Blast
                 : WeaponSpecial.Valiance;
         return lordOfOrder;
@@ -1317,7 +1333,8 @@ public class UltraGramiel_LW
         && LoneWolf.IsArmyPlayer(1);
 
     private bool IsReliableVerusDoomKnight() =>
-        armyComposition == ArmyComposition.Reliable
+        armyComposition
+            is ArmyComposition.Reliable or ArmyComposition.Test
         && LoneWolf.IsArmyPlayer(1);
 
     private bool UsesPay2WinCompositionBehavior() =>

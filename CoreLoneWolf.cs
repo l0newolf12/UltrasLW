@@ -235,6 +235,21 @@ public class CoreLoneWolf
         Core.RunCore();
     }
 
+    public void SetAntiLag()
+    {
+        Bot.Options.HidePlayers = true;
+        Bot.Lite.DisableSelfAnimation = true;
+        Bot.Lite.DisableMonsterAnimation = true;
+        Bot.Lite.DisableSkillAnimation = true;
+        Bot.Lite.DisableDamageStrobe = true;
+
+        bool monstersHidden = Bot.Flash.GetGameObject<bool>(
+            "ui.monsterIcon.redX.visible"
+        );
+        if (!monstersHidden)
+            Bot.Flash.CallGameFunction("world.toggleMonsters");
+    }
+
     public ClassPreset LegionRevenant() =>
         new()
         {
