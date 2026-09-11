@@ -545,6 +545,9 @@ public class UltraDage_LW
             if (result != FightResult.Continue)
                 return result;
 
+            if (recovered && IsSafeHealer())
+                safeHealUsedThisWindow = true;
+
             DrainZoneEvents(move: true);
             LoneWolf.MaintainTarget(DageMapId);
 
@@ -553,7 +556,6 @@ public class UltraDage_LW
 
             if (recovered)
             {
-                safeHealUsedThisWindow = false;
                 nextSignalNumber = AlignSignalNumber(
                     nextSignalNumber,
                     openingOwner
@@ -708,7 +710,7 @@ public class UltraDage_LW
                 return result;
 
             if (recovered)
-                safeHealUsedThisWindow = false;
+                safeHealUsedThisWindow = true;
 
             DrainZoneEvents(move: true);
             LoneWolf.MaintainTarget(DageMapId);
