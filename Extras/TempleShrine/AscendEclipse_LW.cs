@@ -21,6 +21,7 @@ public class AscendEclipse_LW
     {
         Default,
         Stable,
+        Pay2Win,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -89,7 +90,7 @@ public class AscendEclipse_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -212,6 +213,7 @@ public class AscendEclipse_LW
 
         preset = GetClassPreset();
         preset.CapeEnhancement = LoneWolf.IsArmyPlayer(2)
+            && armyComposition != ArmyComposition.Pay2Win
             ? CapeSpecial.Absolution
             : CapeSpecial.Penitence;
         if (LoneWolf.IsArmyPlayer(4))
@@ -409,7 +411,8 @@ public class AscendEclipse_LW
                 }
 
                 bool solarFlareActive = Bot.Self.HasActiveAura(SolarFlareAura);
-                int targetMapId = solarFlareActive && secondaryAlive
+                int targetMapId = secondaryAlive
+                    && solarFlareActive
                     ? EnterSecondaryMapId
                     : primaryAlive
                         ? EnterPrimaryMapId
@@ -556,7 +559,7 @@ public class AscendEclipse_LW
             bool resetRoom = false;
             bool sunsWarmthTauntHandled = false;
             bool moonlightGazeTauntHandled = false;
-            DateTimeOffset lrTauntTargetUntil = DateTimeOffset.MinValue;
+            DateTimeOffset sunsetKnightTauntTargetUntil = DateTimeOffset.MinValue;
 
             while (!Bot.ShouldExit)
             {
@@ -575,7 +578,7 @@ public class AscendEclipse_LW
                 if (recovery == CoreTempleShrine.DungeonRecoveryResult.RejoinRoom)
                 {
                     Core.Jump(RoomTwoCell, RoomTwoPad);
-                    lrTauntTargetUntil = DateTimeOffset.MinValue;
+                    sunsetKnightTauntTargetUntil = DateTimeOffset.MinValue;
                     StartSkillEngine(preset);
                 }
 
@@ -593,16 +596,15 @@ public class AscendEclipse_LW
                 if (secondaryAlive)
                 {
                     bool tauntRequested = HandleSelfAuraTaunt(
-                        1,
+                        SunsetKnightTaunterArmyPlayer,
                         RoomTwoSecondaryMapId,
                         SunsWarmthAura,
                         ref sunsWarmthTauntHandled
                     );
 
                     if (tauntRequested)
-                        lrTauntTargetUntil = DateTimeOffset.Now.AddMilliseconds(
-                            TauntTargetHold
-                        );
+                        sunsetKnightTauntTargetUntil =
+                            DateTimeOffset.Now.AddMilliseconds(TauntTargetHold);
                 }
 
                 if (primaryAlive)
@@ -613,9 +615,11 @@ public class AscendEclipse_LW
                         ref moonlightGazeTauntHandled
                     );
 
-                int targetMapId = LoneWolf.IsArmyPlayer(1)
+                int targetMapId = LoneWolf.IsArmyPlayer(
+                    SunsetKnightTaunterArmyPlayer
+                )
                     && secondaryAlive
-                    && DateTimeOffset.Now < lrTauntTargetUntil
+                    && DateTimeOffset.Now < sunsetKnightTauntTargetUntil
                         ? RoomTwoSecondaryMapId
                         : primaryAlive
                             ? RoomTwoPrimaryMapId
@@ -836,10 +840,7 @@ public class AscendEclipse_LW
         }
 
         float gap = midnightHealth - solsticeHealth;
-        bool isBalancer = LoneWolf.IsArmyPlayer(2)
-            || (armyComposition == ArmyComposition.Stable
-                ? LoneWolf.IsArmyPlayer(1)
-                : LoneWolf.IsArmyPlayer(4));
+        bool isBalancer = IsFinalBalancer;
         if (isBalancer)
         {
             if (gap < BalanceMinimumDifference)
@@ -871,7 +872,9 @@ public class AscendEclipse_LW
     private bool OwnsFinalTaunt(int cycle)
     {
         bool openingOwner = LoneWolf.IsArmyPlayer(1)
-            || LoneWolf.IsArmyPlayer(3);
+            || (armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.IsArmyPlayer(2)
+                : LoneWolf.IsArmyPlayer(3));
         return openingOwner ? cycle % 2 == 1 : cycle % 2 == 0;
     }
 
@@ -907,7 +910,10 @@ public class AscendEclipse_LW
         ref int cycle
     )
     {
-        if (!LoneWolf.IsArmyPlayer(1) && !LoneWolf.IsArmyPlayer(3))
+        if (
+            !LoneWolf.IsArmyPlayer(RoomOnePrimaryFollowingTaunterArmyPlayer)
+            && !IsRoomOneArchPaladin
+        )
             return;
 
         bool hasAura = Bot.Target
@@ -926,14 +932,14 @@ public class AscendEclipse_LW
         auraHandled = true;
         cycle++;
         bool ownsTaunt = cycle % 2 == 1
-            ? LoneWolf.IsArmyPlayer(3)
-            : LoneWolf.IsArmyPlayer(1);
+            ? IsRoomOneArchPaladin
+            : LoneWolf.IsArmyPlayer(RoomOnePrimaryFollowingTaunterArmyPlayer);
 
         if (!ownsTaunt)
             return;
 
         LoneWolf.RequestTaunt(targetMapId);
-        if (LoneWolf.IsArmyPlayer(3))
+        if (IsRoomOneArchPaladin)
         {
             LoneWolf.RequestPrioritySkill(3);
             Core.Logger(
@@ -950,7 +956,7 @@ public class AscendEclipse_LW
         ref bool skillFourQueued
     )
     {
-        if (!LoneWolf.IsArmyPlayer(3))
+        if (!IsRoomOneArchPaladin)
             return;
 
         var righteousSeal = Bot.Target.GetAura(RighteousSealAura);
@@ -996,7 +1002,7 @@ public class AscendEclipse_LW
 
             int tauntCycle = (handledAttacks - 3) / 4 + 1;
             bool ownsTaunt = tauntCycle % 2 == 1
-                ? LoneWolf.IsArmyPlayer(2)
+                ? LoneWolf.IsArmyPlayer(RoomOneSecondaryOpeningTaunterArmyPlayer)
                 : LoneWolf.IsArmyPlayer(4);
 
             if (!ownsTaunt)
@@ -1069,7 +1075,7 @@ public class AscendEclipse_LW
 
     private void StartRoomOneSkillEngine(ClassPreset preset)
     {
-        if (!LoneWolf.IsArmyPlayer(3))
+        if (!IsRoomOneArchPaladin)
         {
             StartSkillEngine(preset);
             return;
@@ -1087,18 +1093,56 @@ public class AscendEclipse_LW
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1))
+        {
+            if (armyComposition == ArmyComposition.Pay2Win)
+                return LoneWolf.Guardian();
+
             return armyComposition == ArmyComposition.Stable
-                ? LoneWolf.VerusDoomKnight()
-                : LoneWolf.LegionRevenant();
+                    ? LoneWolf.VerusDoomKnight()
+                    : LoneWolf.LegionRevenant();
+        }
 
         if (LoneWolf.IsArmyPlayer(2))
-            return LoneWolf.StoneCrusher();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.ArchPaladin()
+                : LoneWolf.StoneCrusher();
 
         if (LoneWolf.IsArmyPlayer(3))
-            return LoneWolf.ArchPaladin();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.LegionRevenant()
+                : LoneWolf.ArchPaladin();
 
         return LoneWolf.LordOfOrder();
     }
+
+    private int SunsetKnightTaunterArmyPlayer =>
+        armyComposition == ArmyComposition.Pay2Win
+            ? 3
+            : 1;
+
+    private int RoomOneSecondaryOpeningTaunterArmyPlayer =>
+        armyComposition == ArmyComposition.Pay2Win
+            ? 1
+            : 2;
+
+    private int RoomOnePrimaryFollowingTaunterArmyPlayer =>
+        armyComposition == ArmyComposition.Pay2Win
+            ? 3
+            : 1;
+
+    private bool IsRoomOneArchPaladin =>
+        armyComposition == ArmyComposition.Pay2Win
+            ? LoneWolf.IsArmyPlayer(2)
+            : LoneWolf.IsArmyPlayer(3);
+
+    private bool IsFinalBalancer =>
+        LoneWolf.IsArmyPlayer(2)
+        || (armyComposition == ArmyComposition.Pay2Win
+            && LoneWolf.IsArmyPlayer(4))
+        || ((armyComposition == ArmyComposition.Stable
+                || armyComposition == ArmyComposition.Pay2Win)
+            ? LoneWolf.IsArmyPlayer(1)
+            : LoneWolf.IsArmyPlayer(4));
 
     private T GetSetupOption<T>(string optionName)
         where T : IConvertible =>

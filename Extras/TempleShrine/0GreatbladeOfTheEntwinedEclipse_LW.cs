@@ -101,19 +101,19 @@ public class GreatbladeOfTheEntwinedEclipse_LW
         new Option<MidnightSun_LW.ArmyComposition>(
             "MidnightSunComposition",
             "Midnight Sun Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nReliable: Shaman / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nReliable: Shaman / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
             MidnightSun_LW.ArmyComposition.Default
         ),
         new Option<SolsticeMoon_LW.ArmyComposition>(
             "SolsticeMoonComposition",
             "Solstice Moon Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nReliable: Shaman / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nReliable: Shaman / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
             SolsticeMoon_LW.ArmyComposition.Default
         ),
         new Option<AscendEclipse_LW.ArmyComposition>(
             "AscendEclipseComposition",
             "Ascend Eclipse Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
             AscendEclipse_LW.ArmyComposition.Default
         ),
         new Option<bool>(

@@ -2310,7 +2310,10 @@ public class CoreLoneWolf
                 StringComparison.OrdinalIgnoreCase
             )
         )
+        {
+            Bot.Sleep(2250);
             return;
+        }
 
         Bot.Skills.UseSkill(3);
         Bot.Sleep(750);
@@ -3002,12 +3005,8 @@ public class CoreLoneWolf
         const string ink = "Zealous Ink";
 
         int requiredTurnIns =
-            (
-                EnrageMaxStack
-                - Bot.Inventory.GetQuantity(EnrageScroll)
-                + EnrageRewardQuantity
-                - 1
-            ) / EnrageRewardQuantity;
+            (EnrageMaxStack - Bot.Inventory.GetQuantity(EnrageScroll))
+            / EnrageRewardQuantity;
 
         Core.Join(SpellcraftMap);
 
@@ -3037,7 +3036,7 @@ public class CoreLoneWolf
             return false;
 
         return !Bot.ShouldExit
-            && Bot.Inventory.GetQuantity(EnrageScroll) >= EnrageMaxStack;
+            && Bot.Inventory.GetQuantity(EnrageScroll) >= EnrageThreshold;
     }
 
     private bool PrepareEnrageByFarming()
@@ -4630,14 +4629,17 @@ public class CoreLoneWolf
         )
             return false;
 
-        bool hasRequiredWeapon = Bot.Inventory.Items.Any(item =>
+        bool hasRequiredDamageBoost = Bot.Inventory.Items.Any(item =>
             item.Equipped
-            && !Core.NoneEnhancableFilter(item)
+            && (
+                !Core.NoneEnhancableFilter(item)
+                || item.Category == ItemCategory.Armor
+            )
             && Core.GetBoostFloat(item, "dmgAll") >= 1.30f
         );
 
         if (
-            !hasRequiredWeapon
+            !hasRequiredDamageBoost
             && !SendArmySignal("ULTRA_WEAPON_INVALID")
         )
             return false;
@@ -4646,14 +4648,14 @@ public class CoreLoneWolf
             return false;
 
         List<string> playersBelowLevel = new();
-        List<string> playersMissingWeapon = new();
+        List<string> playersMissingDamageBoost = new();
         for (int playerNumber = 1; playerNumber <= armyPlayers.Length; playerNumber++)
         {
             if (HasArmySignal("ULTRA_LEVEL_INVALID", playerNumber))
                 playersBelowLevel.Add($"Player {playerNumber}");
 
             if (HasArmySignal("ULTRA_WEAPON_INVALID", playerNumber))
-                playersMissingWeapon.Add($"Player {playerNumber}");
+                playersMissingDamageBoost.Add($"Player {playerNumber}");
         }
 
         if (playersBelowLevel.Count > 0)
@@ -4667,10 +4669,10 @@ public class CoreLoneWolf
             return false;
         }
 
-        if (playersMissingWeapon.Count > 0)
+        if (playersMissingDamageBoost.Count > 0)
         {
             Core.Logger(
-                $"{ultraName} requires every player to equip a 30% damage boost weapon or greater before starting. Players with an invalid equipped weapon: {string.Join(", ", playersMissingWeapon)}. Equip a qualifying weapon and restart the script.",
+                $"{ultraName} requires every player to equip a weapon or armor with at least a 30% damage boost to all before starting. Players missing the equipped boost: {string.Join(", ", playersMissingDamageBoost)}. Equip a qualifying weapon or armor and restart the script.",
                 "ValidateUltraAccess",
                 messageBox: true,
                 stopBot: true

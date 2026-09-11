@@ -22,6 +22,7 @@ public class SolsticeMoon_LW
         Default,
         Stable,
         Reliable,
+        Pay2Win,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -74,7 +75,7 @@ public class SolsticeMoon_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nReliable: Shaman / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: VDK / SC / AP / LOO\nReliable: Shaman / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -707,6 +708,9 @@ public class SolsticeMoon_LW
                 return shaman;
             }
 
+            if (armyComposition == ArmyComposition.Pay2Win)
+                return LoneWolf.Guardian();
+
             if (armyComposition == ArmyComposition.Stable)
                 return LoneWolf.VerusDoomKnight();
 
@@ -714,16 +718,24 @@ public class SolsticeMoon_LW
         }
 
         if (LoneWolf.IsArmyPlayer(2))
-            return LoneWolf.StoneCrusher();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.ArchPaladin()
+                : LoneWolf.StoneCrusher();
 
         if (LoneWolf.IsArmyPlayer(3))
-            return LoneWolf.ArchPaladin();
+            return armyComposition == ArmyComposition.Pay2Win
+                ? LoneWolf.LegionRevenant()
+                : LoneWolf.ArchPaladin();
 
         return LoneWolf.LordOfOrder();
     }
 
     private int PrimaryTaunterArmyPlayer =>
-        armyComposition == ArmyComposition.Reliable ? 2 : 1;
+        armyComposition == ArmyComposition.Reliable
+            ? 2
+            : armyComposition == ArmyComposition.Pay2Win
+                ? 3
+                : 1;
 
     private T GetSetupOption<T>(string optionName)
         where T : IConvertible =>

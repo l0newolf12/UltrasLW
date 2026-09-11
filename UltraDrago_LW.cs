@@ -22,6 +22,7 @@ public class UltraDrago_LW
         Stable,
         Reliable,
         Pay2Win,
+        Test,
     }
 
     private enum FightResult
@@ -81,7 +82,7 @@ public class UltraDrago_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO\nTest: Guardian / AP / LR / SC",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -166,6 +167,7 @@ public class UltraDrago_LW
         isTaunter = (
                 armyComposition != ArmyComposition.Stable
                 && armyComposition != ArmyComposition.Pay2Win
+                && armyComposition != ArmyComposition.Test
             )
             || !LoneWolf.IsArmyPlayer(1);
 
@@ -390,6 +392,7 @@ public class UltraDrago_LW
         if (
             armyComposition != ArmyComposition.Stable
             && armyComposition != ArmyComposition.Pay2Win
+            && armyComposition != ArmyComposition.Test
         )
             return FightGuardPair(fightAttempt);
 
@@ -693,6 +696,7 @@ public class UltraDrago_LW
                 (
                     armyComposition == ArmyComposition.Stable
                     || armyComposition == ArmyComposition.Pay2Win
+                    || armyComposition == ArmyComposition.Test
                 )
                 && LoneWolf.IsArmyPlayer(2)
             )
@@ -712,6 +716,7 @@ public class UltraDrago_LW
             if (
                 armyComposition == ArmyComposition.Stable
                 || armyComposition == ArmyComposition.Pay2Win
+                || armyComposition == ArmyComposition.Test
             )
                 return LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(4)
                     ? AlgieMapId
@@ -946,7 +951,10 @@ public class UltraDrago_LW
             if (armyComposition == ArmyComposition.Stable)
                 return LoneWolf.KingsEcho();
 
-            if (armyComposition == ArmyComposition.Pay2Win)
+            if (
+                armyComposition == ArmyComposition.Pay2Win
+                || armyComposition == ArmyComposition.Test
+            )
                 return LoneWolf.Guardian();
 
             return armyComposition == ArmyComposition.Reliable
@@ -955,16 +963,18 @@ public class UltraDrago_LW
         }
 
         if (LoneWolf.IsArmyPlayer(2))
-            return armyComposition == ArmyComposition.Pay2Win
+            return armyComposition == ArmyComposition.Test
                 ? LoneWolf.ArchPaladin()
                 : LoneWolf.StoneCrusher();
 
         if (LoneWolf.IsArmyPlayer(3))
-            return armyComposition == ArmyComposition.Pay2Win
+            return armyComposition == ArmyComposition.Test
                 ? LoneWolf.LegionRevenant()
                 : LoneWolf.ArchPaladin();
 
-        return LoneWolf.LordOfOrder();
+        return armyComposition == ArmyComposition.Test
+            ? LoneWolf.StoneCrusher()
+            : LoneWolf.LordOfOrder();
     }
 
     private string GetPlayerAlias() => GetPlayerAlias(

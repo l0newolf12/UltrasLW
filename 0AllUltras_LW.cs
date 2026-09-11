@@ -173,7 +173,7 @@ public class AllUltras_LW
         new Option<UltraDrakath_LW.ArmyComposition>(
             "ChampionDrakathComposition",
             "→ Champion Drakath Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nPay2Win2: Guardian / PCM / LR / LOO\nTest: AI / AP / LR / LOO\nTest2: AI / PCM / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nPay2Win2: Guardian / PCM / LR / LOO\nTest: AI / AP / LR / LOO\nTest2: AI / PCM / LR / LOO\nTest3: Guardian / AP / LR / LOO\nTest4: AI / AP / LR / SC",
             UltraDrakath_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -185,7 +185,7 @@ public class AllUltras_LW
         new Option<UltraDrago_LW.ArmyComposition>(
             "UltraDragoComposition",
             "→ Ultra Drago Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO\nTest: Guardian / AP / LR / SC",
             UltraDrago_LW.ArmyComposition.Default
         ),
         new Option<bool>(
@@ -283,8 +283,15 @@ public class AllUltras_LW
             "Setup",
             "SkipCompletedUltras"
         );
+        totalUltras = CountUltras(selectedMask);
+        processedUltras = 0;
+        Stopwatch totalTimer = Stopwatch.StartNew();
         if (skipCompletedUltras && !BuildPartyRequiredMask())
+        {
+            totalTimer.Stop();
+            LogSequenceStopped(totalTimer.Elapsed);
             return;
+        }
 
         actualRunMask = skipCompletedUltras
             ? selectedMask & partyRequiredMask
@@ -292,6 +299,7 @@ public class AllUltras_LW
         remainingUltras = CountUltras(actualRunMask);
         if (remainingUltras == 0)
         {
+            totalTimer.Stop();
             Core.Logger(
                 "All selected Ultras are already completed by the party. Nothing to run.",
                 LogPrefix
@@ -300,16 +308,11 @@ public class AllUltras_LW
         }
 
         totalUltras = remainingUltras;
-        processedUltras = 0;
-        Stopwatch totalTimer = Stopwatch.StartNew();
 
         if (remainingUltras > 1 && !PrepareOracle())
         {
             totalTimer.Stop();
-            Core.Logger(
-                $"Ultra sequence stopped at {DateTime.Now:HH:mm:ss} (total duration: {totalTimer.Elapsed:hh\\:mm\\:ss}).",
-                LogPrefix
-            );
+            LogSequenceStopped(totalTimer.Elapsed);
             return;
         }
 
@@ -394,16 +397,13 @@ public class AllUltras_LW
         )
         {
             totalTimer.Stop();
-            Core.Logger(
-                $"Ultra sequence stopped at {DateTime.Now:HH:mm:ss} ({processedUltras}/{totalUltras} processed, total duration: {totalTimer.Elapsed:hh\\:mm\\:ss}).",
-                LogPrefix
-            );
+            LogSequenceStopped(totalTimer.Elapsed);
             return;
         }
 
         totalTimer.Stop();
         Core.Logger(
-            $"All selected Ultras finished at {DateTime.Now:HH:mm:ss} ({processedUltras}/{totalUltras}, total duration: {totalTimer.Elapsed:hh\\:mm\\:ss}).",
+            $"All selected Ultras finished in {FormatDuration(totalTimer.Elapsed)} ({processedUltras}/{totalUltras}).",
             LogPrefix
         );
     }
@@ -559,14 +559,14 @@ public class AllUltras_LW
         UltraRunResult result = runUltra();
         timer.Stop();
 
-        string finishTime = DateTime.Now.ToString("HH:mm:ss");
-        string duration = timer.Elapsed.ToString("hh\\:mm\\:ss");
+        string duration = FormatDuration(timer.Elapsed);
+        int remainingAfterCurrent = Math.Max(remainingUltras - 1, 0);
 
         if (result == UltraRunResult.Completed)
         {
             processedUltras++;
             Core.Logger(
-                $"{ultraName} completed at {finishTime} ({duration}). [{processedUltras}/{totalUltras}] {remainingUltras - 1} remaining.",
+                $"{ultraName} completed in {duration}. [{processedUltras}/{totalUltras}] {remainingAfterCurrent} remaining.",
                 LogPrefix
             );
             return ContinueAfterUltra();
@@ -576,7 +576,7 @@ public class AllUltras_LW
         {
             processedUltras++;
             Core.Logger(
-                $"{ultraName} exhausted all fight attempts at {finishTime} ({duration}). [{processedUltras}/{totalUltras}] {remainingUltras - 1} remaining. Continuing.",
+                $"{ultraName} exhausted all fight attempts after {duration}. [{processedUltras}/{totalUltras}] {remainingAfterCurrent} remaining. Continuing.",
                 LogPrefix
             );
             return ContinueAfterUltra();
@@ -584,17 +584,29 @@ public class AllUltras_LW
 
         if (Bot.ShouldExit)
             Core.Logger(
-                $"{ultraName} failed at {finishTime} ({duration}) after {processedUltras}/{totalUltras} processed. Stopping the Ultra sequence.",
+                $"{ultraName} failed after {duration} with {processedUltras}/{totalUltras} processed. Stopping the Ultra sequence.",
                 LogPrefix
             );
         else
             Core.Logger(
-                $"{ultraName} failed at {finishTime} ({duration}) after {processedUltras}/{totalUltras} processed. Stopping the Ultra sequence.",
+                $"{ultraName} failed after {duration} with {processedUltras}/{totalUltras} processed. Stopping the Ultra sequence.",
                 LogPrefix,
                 messageBox: true,
                 stopBot: true
             );
         return false;
+    }
+
+    private void LogSequenceStopped(TimeSpan elapsed) =>
+        Core.Logger(
+            $"Ultra sequence stopped after {FormatDuration(elapsed)} with {processedUltras}/{totalUltras} processed.",
+            LogPrefix
+        );
+
+    private static string FormatDuration(TimeSpan elapsed)
+    {
+        int totalHours = (int)elapsed.TotalHours;
+        return $"{totalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
     }
 
     private bool PrepareOracle()
