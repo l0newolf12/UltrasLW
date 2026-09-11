@@ -19,6 +19,7 @@ tags: ultra, army, corelonewolf, master
 //cs_include Scripts/UltrasLW/UltraSpeaker_LW.cs
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using Skua.Core.Interfaces;
 using Skua.Core.Options;
 
@@ -64,6 +65,8 @@ public class AllUltras_LW
     private int partyRequiredMask;
     private int actualRunMask;
     private int remainingUltras;
+    private int totalUltras;
+    private int processedUltras;
 
     public string OptionsStorage = "0AllUltras_LW";
     public bool DontPreconfigure = true;
@@ -287,9 +290,28 @@ public class AllUltras_LW
             ? selectedMask & partyRequiredMask
             : selectedMask;
         remainingUltras = CountUltras(actualRunMask);
+        if (remainingUltras == 0)
+        {
+            Core.Logger(
+                "All selected Ultras are already completed by the party. Nothing to run.",
+                LogPrefix
+            );
+            return;
+        }
+
+        totalUltras = remainingUltras;
+        processedUltras = 0;
+        Stopwatch totalTimer = Stopwatch.StartNew();
 
         if (remainingUltras > 1 && !PrepareOracle())
+        {
+            totalTimer.Stop();
+            Core.Logger(
+                $"Ultra sequence stopped at {DateTime.Now:HH:mm:ss} (total duration: {totalTimer.Elapsed:hh\\:mm\\:ss}).",
+                LogPrefix
+            );
             return;
+        }
 
         if (
             !RunSelectedUltra(
@@ -370,9 +392,20 @@ public class AllUltras_LW
                 () => new UltraSpeaker_LW().RunFromMaster()
             )
         )
+        {
+            totalTimer.Stop();
+            Core.Logger(
+                $"Ultra sequence stopped at {DateTime.Now:HH:mm:ss} ({processedUltras}/{totalUltras} processed, total duration: {totalTimer.Elapsed:hh\\:mm\\:ss}).",
+                LogPrefix
+            );
             return;
+        }
 
-        Core.Logger("All selected Ultras finished.", LogPrefix);
+        totalTimer.Stop();
+        Core.Logger(
+            $"All selected Ultras finished at {DateTime.Now:HH:mm:ss} ({processedUltras}/{totalUltras}, total duration: {totalTimer.Elapsed:hh\\:mm\\:ss}).",
+            LogPrefix
+        );
     }
 
     private int BuildSelectedMask()
@@ -517,29 +550,46 @@ public class AllUltras_LW
             return true;
         }
 
-        Core.Logger($"Starting {ultraName}.", LogPrefix);
+        Core.Logger(
+            $"Starting {ultraName} ({processedUltras + 1}/{totalUltras}).",
+            LogPrefix
+        );
+
+        Stopwatch timer = Stopwatch.StartNew();
         UltraRunResult result = runUltra();
+        timer.Stop();
+
+        string finishTime = DateTime.Now.ToString("HH:mm:ss");
+        string duration = timer.Elapsed.ToString("hh\\:mm\\:ss");
 
         if (result == UltraRunResult.Completed)
         {
-            Core.Logger($"{ultraName} completed.", LogPrefix);
+            processedUltras++;
+            Core.Logger(
+                $"{ultraName} completed at {finishTime} ({duration}). [{processedUltras}/{totalUltras}] {remainingUltras - 1} remaining.",
+                LogPrefix
+            );
             return ContinueAfterUltra();
         }
 
         if (result == UltraRunResult.AttemptsExhausted)
         {
+            processedUltras++;
             Core.Logger(
-                $"{ultraName} exhausted all fight attempts. Continuing.",
+                $"{ultraName} exhausted all fight attempts at {finishTime} ({duration}). [{processedUltras}/{totalUltras}] {remainingUltras - 1} remaining. Continuing.",
                 LogPrefix
             );
             return ContinueAfterUltra();
         }
 
         if (Bot.ShouldExit)
-            Core.Logger($"{ultraName} failed. Stopping the Ultra sequence.", LogPrefix);
+            Core.Logger(
+                $"{ultraName} failed at {finishTime} ({duration}) after {processedUltras}/{totalUltras} processed. Stopping the Ultra sequence.",
+                LogPrefix
+            );
         else
             Core.Logger(
-                $"{ultraName} failed. Stopping the Ultra sequence.",
+                $"{ultraName} failed at {finishTime} ({duration}) after {processedUltras}/{totalUltras} processed. Stopping the Ultra sequence.",
                 LogPrefix,
                 messageBox: true,
                 stopBot: true
