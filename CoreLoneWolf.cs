@@ -3130,6 +3130,8 @@ public class CoreLoneWolf
 
     private bool CompleteEnrageQuest(int amount)
     {
+        const string ink = "Zealous Ink";
+
         if (Bot.ShouldExit)
             return false;
 
@@ -3137,6 +3139,7 @@ public class CoreLoneWolf
             return false;
 
         int previousQuantity = Bot.Inventory.GetQuantity(EnrageScroll);
+        int previousInkQuantity = Bot.Inventory.GetQuantity(ink);
         int expectedQuantity = Math.Min(
             EnrageMaxStack,
             previousQuantity + amount * EnrageRewardQuantity
@@ -3149,6 +3152,36 @@ public class CoreLoneWolf
 
         if (Bot.ShouldExit)
             return false;
+
+        if (completed < amount && amount == 1)
+        {
+            bool HasCompletionEvidence() =>
+                Bot.Inventory.GetQuantity(EnrageScroll) >= expectedQuantity
+                || Bot.Inventory.GetQuantity(ink) < previousInkQuantity;
+
+            Bot.Wait.ForTrue(HasCompletionEvidence, 3);
+
+            if (HasCompletionEvidence())
+                completed = amount;
+            else
+            {
+                Core.Logger(
+                    $"{EnrageScroll} multi completion was not confirmed. Retrying one turn-in with normal completion.",
+                    "PrepareScrolls"
+                );
+
+                bool fallbackCompleted = Core.EnsureComplete(EnrageQuestId);
+                Bot.Wait.ForTrue(HasCompletionEvidence, 3);
+
+                if (fallbackCompleted || HasCompletionEvidence())
+                    completed = amount;
+                else
+                    return ScrollPreparationFailed(
+                        EnrageScroll,
+                        "both multi and normal quest completion failed for one requested turn-in"
+                    );
+            }
+        }
 
         if (completed < amount)
             return ScrollPreparationFailed(
