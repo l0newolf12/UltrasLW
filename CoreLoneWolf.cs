@@ -3148,39 +3148,81 @@ public class CoreLoneWolf
         if (previousQuantity == 0)
             Core.AddDrop(EnrageScroll);
 
+        if (!PrepareEnrageQuestTurnIn())
+            return ScrollPreparationFailed(
+                EnrageScroll,
+                $"quest {EnrageQuestId} could not be prepared for completion"
+            );
+
         int completed = Core.EnsureCompleteMulti(EnrageQuestId, amount);
 
         if (Bot.ShouldExit)
             return false;
 
-        if (completed < amount && amount == 1)
-        {
-            bool HasCompletionEvidence() =>
-                Bot.Inventory.GetQuantity(EnrageScroll) >= expectedQuantity
-                || Bot.Inventory.GetQuantity(ink) < previousInkQuantity;
+        int ConfirmedTurnIns() =>
+            Math.Min(
+                amount,
+                Math.Max(
+                    completed,
+                    Math.Max(0, previousInkQuantity - Bot.Inventory.GetQuantity(ink))
+                )
+            );
 
+        bool HasCompletionEvidence() =>
+            Bot.Inventory.GetQuantity(EnrageScroll) >= expectedQuantity
+            || ConfirmedTurnIns() >= amount;
+
+        if (completed < amount)
+        {
             Bot.Wait.ForTrue(HasCompletionEvidence, 3);
 
             if (HasCompletionEvidence())
                 completed = amount;
-            else
+            else if (amount == 1)
             {
                 Core.Logger(
                     $"{EnrageScroll} multi completion was not confirmed. Retrying one turn-in with normal completion.",
                     "PrepareScrolls"
                 );
 
+                if (!PrepareEnrageQuestTurnIn())
+                    return ScrollPreparationFailed(
+                        EnrageScroll,
+                        $"quest {EnrageQuestId} could not be prepared for the normal completion fallback"
+                    );
+
                 bool fallbackCompleted = Core.EnsureComplete(EnrageQuestId);
                 Bot.Wait.ForTrue(HasCompletionEvidence, 3);
 
                 if (fallbackCompleted || HasCompletionEvidence())
                     completed = amount;
-                else
-                    return ScrollPreparationFailed(
-                        EnrageScroll,
-                        "both multi and normal quest completion failed for one requested turn-in"
-                    );
             }
+        }
+
+        if (completed < amount && !HasCompletionEvidence())
+        {
+            int remainingTurnIns = amount - ConfirmedTurnIns();
+            Core.Logger(
+                $"{EnrageScroll} completion is still unconfirmed. Retrying {remainingTurnIns} remaining turn-in{(remainingTurnIns == 1 ? string.Empty : "s")} after stabilization.",
+                "PrepareScrolls"
+            );
+
+            if (!PrepareEnrageQuestTurnIn())
+                return ScrollPreparationFailed(
+                    EnrageScroll,
+                    $"quest {EnrageQuestId} could not be prepared for the final completion fallback"
+                );
+
+            int finalCompleted = Core.EnsureCompleteMulti(EnrageQuestId, remainingTurnIns);
+            Bot.Wait.ForTrue(HasCompletionEvidence, 3);
+
+            if (finalCompleted >= remainingTurnIns || HasCompletionEvidence())
+                completed = amount;
+            else
+                return ScrollPreparationFailed(
+                    EnrageScroll,
+                    $"all bounded completion attempts failed; {ConfirmedTurnIns()} of {amount} requested turn-ins were confirmed"
+                );
         }
 
         if (completed < amount)
@@ -3211,6 +3253,23 @@ public class CoreLoneWolf
             );
 
         return true;
+    }
+
+    private bool PrepareEnrageQuestTurnIn()
+    {
+        if (Bot.ShouldExit || !Core.EnsureAccept(EnrageQuestId))
+            return false;
+
+        Bot.Wait.ForTrue(() => Bot.Quests.IsInProgress(EnrageQuestId), 10);
+        if (
+            Bot.ShouldExit
+            || !Bot.Quests.IsInProgress(EnrageQuestId)
+            || !Bot.Wait.ForActionCooldown(GameActions.TryQuestComplete)
+        )
+            return false;
+
+        Bot.Sleep(3_000);
+        return !Bot.ShouldExit;
     }
 
     private void PrepareOptionalScroll(string scrollName)
