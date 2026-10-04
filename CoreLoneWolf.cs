@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Newtonsoft.Json.Linq;
 using Skua.Core.Interfaces;
 using Skua.Core.Models;
 using Skua.Core.Models.Items;
@@ -29,8 +30,32 @@ public class CoreLoneWolf
     private IScriptInterface Bot => IScriptInterface.Instance;
     private CoreBots Core => CoreBots.Instance;
 
+    // Fixed skill-worker polling; Gunslinger retains its faster firing cadence.
     private const int SkillPollDelay = 100;
     private const int CSSGunslingerFirePollDelay = 50;
+
+    #region UNUSED ON PURPOSE - Event-assisted scheduler state
+    // Retained for future single-call AS3 helper integration. No live worker/request
+    // calls or packet subscriptions use this state. Reconnection requires approval.
+    // After a packet wakes the engine: give the game this long to apply it before reading its state.
+    private const int SkillPacketSettleDelay = 10;
+    // Packets alone never make the engine run more often than this.
+    private const int SkillPacketPassGap = 25;
+    private static readonly string[] SkillWakePacketMarkers =
+    {
+        "\"cmd\":\"ct\"",
+        "\"cmd\":\"uotls\"",
+        "\"cmd\":\"stu\"",
+        "\"cmd\":\"sAct\"",
+        "\"cmd\":\"seia\"",
+    };
+    private readonly AutoResetEvent skillWake = new(false);
+    private int skillWakeFromRequest;
+    private int skillWakeFromPacket;
+    private long skillPassStartedAt = 0;
+    private bool skillTimingFailureLogged;
+    #endregion
+
     private const string ArmyProtocolVersion = "1";
     private const int ArmyPollDelay = 500;
     private const int ArmyFileRetryDelay = 100;
@@ -1035,22 +1060,30 @@ public class CoreLoneWolf
         Interlocked.Exchange(ref packetDetectionCount, 0);
     }
 
-    public void ResumeSkillEngine() =>
+    public void ResumeSkillEngine()
+    {
         Volatile.Write(ref skillEnginePaused, 0);
+    }
 
-    public void SetOrdinarySkillsSuppressed(bool suppressed) =>
+    public void SetOrdinarySkillsSuppressed(bool suppressed)
+    {
         Volatile.Write(ref ordinarySkillsSuppressed, suppressed ? 1 : 0);
+    }
 
     public void RequestTaunt(int mapId)
     {
         if (mapId > 0)
+        {
             Volatile.Write(ref pendingTauntMapId, mapId);
+        }
     }
 
     public void RequestAbsolutePriorityTaunt(int mapId)
     {
         if (mapId > 0)
+        {
             Volatile.Write(ref pendingAbsolutePriorityTauntMapId, mapId);
+        }
     }
 
     public bool HasPendingAbsolutePriorityTaunt() =>
@@ -1074,13 +1107,17 @@ public class CoreLoneWolf
     public void RequestSkillFive(int mapId)
     {
         if (mapId > 0)
+        {
             Volatile.Write(ref pendingSkillFiveMapId, mapId);
+        }
     }
 
     public void RequestAbsolutePrioritySkill(int skill)
     {
         if (skill is >= 1 and <= 5)
+        {
             Volatile.Write(ref pendingAbsolutePrioritySkill, skill);
+        }
     }
 
     public bool HasPendingAbsolutePrioritySkill() =>
@@ -1089,7 +1126,9 @@ public class CoreLoneWolf
     public void RequestPrioritySkill(int skill)
     {
         if (skill is >= 1 and <= 4)
+        {
             Volatile.Write(ref pendingPrioritySkill, skill);
+        }
     }
 
     public bool HasPendingPrioritySkill() =>
@@ -1127,18 +1166,21 @@ public class CoreLoneWolf
             targetMapId,
             returnMapId
         );
-        return Interlocked.CompareExchange(
+        bool accepted = Interlocked.CompareExchange(
             ref pendingTargetedPrioritySkill,
             request,
             null
         ) == null;
+        return accepted;
     }
 
     public bool HasPendingTargetedPrioritySkill() =>
         Volatile.Read(ref pendingTargetedPrioritySkill) != null;
 
-    public void SetShamanSkillThreeEnabled(bool enabled) =>
+    public void SetShamanSkillThreeEnabled(bool enabled)
+    {
         Volatile.Write(ref shamanSkillThreeEnabled, enabled);
+    }
 
     public bool RequestImmediateSkillFive(int mapId)
     {
@@ -1165,6 +1207,281 @@ public class CoreLoneWolf
         StopPacketDetector();
         return true;
     }
+
+    #region UNUSED ON PURPOSE - Event-assisted scheduler helpers
+    // Dormant until Skua supplies a single-call AS3 cooldown helper. These methods
+    // are deliberately not called by the active worker or request/lifecycle paths,
+    // and SkillWakeFlashCall is not subscribed. The current four-read predictor
+    // remains reference code, not an enabled optimization.
+    // Future integration must restore start/stop resets, request notifications,
+    // packet subscription/cleanup, and per-pass timing before reconnecting waits.
+    private static long SkillClockNow() =>
+        DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    private void WakeSkillEngine()
+    {
+        Volatile.Write(ref skillWakeFromRequest, 1);
+        skillWake.Set();
+    }
+
+    private void ResetSkillWake()
+    {
+        skillWake.Reset();
+        Volatile.Write(ref skillWakeFromRequest, 0);
+        Volatile.Write(ref skillWakeFromPacket, 0);
+    }
+
+    private bool SkillWaitInterrupted()
+    {
+        if (!skillEngineRunning || Bot.ShouldExit)
+            return true;
+
+        if (Interlocked.Exchange(ref skillWakeFromRequest, 0) == 0)
+            return false;
+
+        // Consume this notification, not the pending request: a cooldown-blocked request still waits.
+        skillWake.WaitOne(0);
+        return true;
+    }
+
+    // Combat packets (auras, health, mana, stats) can make a skill usable before any cooldown ends.
+    private void SkillWakeFlashCall(string function, object[] args)
+    {
+        if (
+            !skillEngineRunning
+            || !string.Equals(function, "pext", StringComparison.Ordinal)
+            || args.Length == 0
+            || args[0] is not string packet
+        )
+            return;
+
+        foreach (string marker in SkillWakePacketMarkers)
+        {
+            if (!packet.Contains(marker, StringComparison.Ordinal))
+                continue;
+
+            Volatile.Write(ref skillWakeFromPacket, 1);
+            skillWake.Set();
+            return;
+        }
+    }
+
+    // Only predict the lanes the worker can reach; this never decides whether to cast a skill.
+    private int GetSkillWakeMask()
+    {
+        if (Volatile.Read(ref pendingAbsolutePriorityTauntMapId) > 0)
+            return 1 << 5;
+
+        if (Volatile.Read(ref skillEnginePaused) > 0)
+            return 0;
+
+        int absoluteSkill = Volatile.Read(ref pendingAbsolutePrioritySkill);
+        if (absoluteSkill > 0)
+            return 1 << absoluteSkill;
+
+        if (
+            Volatile.Read(ref pendingTauntMapId) > 0
+            || Volatile.Read(ref pendingImmediateTauntMapId) > 0
+        )
+            return 1 << 5;
+
+        if (Volatile.Read(ref ordinarySkillsSuppressed) > 0)
+            return 0;
+
+        if (
+            Volatile.Read(ref pendingSkillFiveMapId) > 0
+            || Volatile.Read(ref pendingImmediateSkillFiveMapId) > 0
+        )
+            return 1 << 5;
+
+        TargetedPrioritySkillRequest? targeted = Volatile.Read(ref pendingTargetedPrioritySkill);
+        if (targeted != null)
+            return 1 << targeted.Skill;
+
+        int prioritySkill = Volatile.Read(ref pendingPrioritySkill);
+        if (prioritySkill > 0)
+            return 1 << prioritySkill;
+
+        int mask = 0;
+        int[] skills = Volatile.Read(ref skillList);
+        if (
+            skillEngineMode is SkillEngineMode.Strict
+                or SkillEngineMode.ShadowStalkerOfTime
+        )
+        {
+            if (skillEngineMode == SkillEngineMode.ShadowStalkerOfTime && ssotOpeningComplete)
+                skills = SSOTLoopSkills;
+
+            int index = skillIndex;
+            if (index >= 0 && index < skills.Length && skills[index] is >= 0 and <= 5)
+                mask = 1 << skills[index];
+        }
+        else if (
+            skillEngineMode is SkillEngineMode.ChronoShadowHunterStable
+                or SkillEngineMode.ChronoShadowHunterGunslinger
+        )
+        {
+            mask = (1 << 1) | (1 << 3) | (1 << 4);
+            if (skillEngineMode == SkillEngineMode.ChronoShadowHunterGunslinger && cssGunslingerFiring)
+                mask |= 1 << 0;
+        }
+        else
+        {
+            foreach (int skill in skills)
+            {
+                if (skill is >= 0 and <= 5)
+                    mask |= 1 << skill;
+            }
+
+            // Conservative unions avoid extra aura/health/mana reads in the scheduler.
+            switch (skillEngineMode)
+            {
+                case SkillEngineMode.Guardian:
+                case SkillEngineMode.ScionOfFlames:
+                    mask |= 1 << 4;
+                    break;
+                case SkillEngineMode.Shaman:
+                    mask |= 1 << 4;
+                    if (Volatile.Read(ref shamanSkillThreeEnabled))
+                        mask |= 1 << 3;
+                    break;
+                case SkillEngineMode.LightCasterHealing:
+                case SkillEngineMode.ArchFiendNoHealing:
+                case SkillEngineMode.VoidHighlord:
+                    mask |= 1 << 3;
+                    break;
+                case SkillEngineMode.ArcanaInvoker:
+                    mask |= 1 << 1;
+                    break;
+                case SkillEngineMode.KingsEcho:
+                    mask |= 1 << 4;
+                    if (useSurvivalSkill)
+                        mask |= 1 << 3;
+                    break;
+            }
+        }
+
+        LimitedPrioritySkillRequest? limited = Volatile.Read(ref pendingLimitedPrioritySkill);
+        if (limited != null)
+            mask |= 1 << limited.Skill;
+
+        if (!string.IsNullOrWhiteSpace(maintainedPotion))
+            mask |= 1 << 5;
+
+        return mask;
+    }
+
+    // When the next relevant skill comes off cooldown, on the game's clock (the PC's, in milliseconds); 0 when
+    // none is waiting on one or the game could not be read. The same rule as the game's own check:
+    // the global cooldown, then the skill's cooldown shortened by haste.
+    private long NextSkillReadyAt()
+    {
+        int mask = GetSkillWakeMask();
+        if (mask == 0)
+            return 0;
+
+        try
+        {
+            string? json = Bot.Flash.GetGameObject("world.actions.active");
+            if (string.IsNullOrWhiteSpace(json) || json == "null")
+                return 0;
+
+            JArray skills = JArray.Parse(json);
+            double globalEnd =
+                Bot.Flash.GetGameObject<double>("world.GCDTS")
+                + Bot.Flash.GetGameObject<double>("world.GCD");
+            double haste = Bot.Flash.GetGameObject<double>(
+                "world.myAvatar.dataLeaf.sta.$tha"
+            );
+            double cooldownFactor = 1 - Math.Min(Math.Max(haste, -1), 0.5);
+            long now = SkillClockNow();
+            long next = 0;
+
+            // Include manual skill 0 only when the selected mode/rotation actually uses it.
+            for (int index = 0; index < skills.Count && index <= 5; index++)
+            {
+                if ((mask & (1 << index)) == 0 || skills[index] is not JObject skill)
+                    continue;
+
+                double cooldown =
+                    (double?)skill["OldCD"] ?? (double?)skill["cd"] ?? 0;
+                double lastUsed = (double?)skill["ts"] ?? 0;
+                long readyAt = (long)Math.Ceiling(
+                    Math.Max(
+                        globalEnd,
+                        lastUsed + Math.Round(cooldown * cooldownFactor)
+                    )
+                );
+
+                if (readyAt > now && (next == 0 || readyAt < next))
+                    next = readyAt;
+            }
+
+            return next;
+        }
+        catch (Exception ex)
+        {
+            if (!skillTimingFailureLogged)
+            {
+                skillTimingFailureLogged = true;
+                Core.Logger(
+                    $"{LogPrefix} skill cooldowns could not be read ({ex.Message}); checking every {SkillPollDelay} ms instead."
+                );
+            }
+
+            return 0;
+        }
+    }
+
+    // Sleeps until the next skill comes off cooldown, a packet changes the fight, or a request comes in;
+    // never longer than maxWait.
+    private void WaitForSkillChange(int maxWait)
+    {
+        if (SkillWaitInterrupted())
+            return;
+
+        long readyAt = NextSkillReadyAt();
+        if (SkillWaitInterrupted())
+            return;
+
+        int wait = maxWait;
+        if (readyAt > 0)
+            wait = (int)Math.Clamp(readyAt - SkillClockNow() + 1, 1, maxWait);
+
+        if (!skillWake.WaitOne(wait))
+            return;
+
+        if (SkillWaitInterrupted())
+            return;
+
+        if (Interlocked.Exchange(ref skillWakeFromPacket, 0) == 0)
+            return;
+
+        // A packet: let the game apply it, and keep a burst of packets to one pass. Not past the
+        // moment a skill is ready, though.
+        long now = SkillClockNow();
+        long settle = Math.Max(
+            SkillPacketSettleDelay,
+            SkillPacketPassGap - (now - skillPassStartedAt)
+        );
+        if (readyAt > 0)
+            settle = Math.Min(settle, Math.Max(readyAt - now + 1, 0));
+        long settleEnd = now + settle;
+        while (settle > 0)
+        {
+            if (SkillWaitInterrupted())
+                return;
+
+            // Requests interrupt settling; packet bursts keep the original bounded deadline.
+            skillWake.WaitOne((int)settle);
+            if (SkillWaitInterrupted())
+                return;
+
+            settle = settleEnd - SkillClockNow();
+        }
+    }
+
+    #endregion
 
     private void PacketDetectorFlashCall(string function, object[] args)
     {
@@ -3148,7 +3465,7 @@ public class CoreLoneWolf
         if (previousQuantity == 0)
             Core.AddDrop(EnrageScroll);
 
-        if (!PrepareEnrageQuestTurnIn())
+        if (!PrepareScrollQuestTurnIn(EnrageQuestId))
             return ScrollPreparationFailed(
                 EnrageScroll,
                 $"quest {EnrageQuestId} could not be prepared for completion"
@@ -3185,7 +3502,7 @@ public class CoreLoneWolf
                     "PrepareScrolls"
                 );
 
-                if (!PrepareEnrageQuestTurnIn())
+                if (!PrepareScrollQuestTurnIn(EnrageQuestId))
                     return ScrollPreparationFailed(
                         EnrageScroll,
                         $"quest {EnrageQuestId} could not be prepared for the normal completion fallback"
@@ -3207,7 +3524,7 @@ public class CoreLoneWolf
                 "PrepareScrolls"
             );
 
-            if (!PrepareEnrageQuestTurnIn())
+            if (!PrepareScrollQuestTurnIn(EnrageQuestId))
                 return ScrollPreparationFailed(
                     EnrageScroll,
                     $"quest {EnrageQuestId} could not be prepared for the final completion fallback"
@@ -3255,15 +3572,15 @@ public class CoreLoneWolf
         return true;
     }
 
-    private bool PrepareEnrageQuestTurnIn()
+    private bool PrepareScrollQuestTurnIn(int questId)
     {
-        if (Bot.ShouldExit || !Core.EnsureAccept(EnrageQuestId))
+        if (Bot.ShouldExit || !Core.EnsureAccept(questId))
             return false;
 
-        Bot.Wait.ForTrue(() => Bot.Quests.IsInProgress(EnrageQuestId), 10);
+        Bot.Wait.ForTrue(() => Bot.Quests.IsInProgress(questId), 10);
         if (
             Bot.ShouldExit
-            || !Bot.Quests.IsInProgress(EnrageQuestId)
+            || !Bot.Quests.IsInProgress(questId)
             || !Bot.Wait.ForActionCooldown(GameActions.TryQuestComplete)
         )
             return false;
@@ -3447,6 +3764,7 @@ public class CoreLoneWolf
         return CompleteOptionalScrollQuest(
             scrollName,
             quest,
+            requirement,
             reward,
             turnIns,
             reward.MaxStack
@@ -3524,6 +3842,7 @@ public class CoreLoneWolf
         return CompleteOptionalScrollQuest(
             scrollName,
             quest,
+            requirement,
             reward,
             turnIns,
             OptionalScrollThreshold
@@ -3568,6 +3887,7 @@ public class CoreLoneWolf
     private bool CompleteOptionalScrollQuest(
         string scrollName,
         Quest quest,
+        ItemBase requirement,
         ItemBase reward,
         int amount,
         int targetQuantity
@@ -3594,6 +3914,7 @@ public class CoreLoneWolf
             return false;
 
         int previousQuantity = Bot.Inventory.GetQuantity(scrollName);
+        int previousRequirementQuantity = Bot.Inventory.GetQuantity(requirement.Name);
         int expectedQuantity = Math.Min(
             reward.MaxStack,
             previousQuantity + amount * reward.Quantity
@@ -3602,9 +3923,85 @@ public class CoreLoneWolf
         if (previousQuantity == 0)
             Core.AddDrop(scrollName);
 
+        if (!PrepareScrollQuestTurnIn(quest.ID))
+            return ScrollPreparationFailed(
+                scrollName,
+                $"quest {quest.ID} could not be prepared for completion"
+            );
+
         int completed = Core.EnsureCompleteMulti(quest.ID, amount);
         if (Bot.ShouldExit)
             return false;
+
+        int ConfirmedTurnIns() =>
+            Math.Min(
+                amount,
+                Math.Max(
+                    completed,
+                    Math.Max(
+                        0,
+                        previousRequirementQuantity
+                            - Bot.Inventory.GetQuantity(requirement.Name)
+                    ) / Math.Max(1, requirement.Quantity)
+                )
+            );
+
+        bool HasCompletionEvidence() =>
+            Bot.Inventory.GetQuantity(scrollName) >= expectedQuantity
+            || ConfirmedTurnIns() >= amount;
+
+        if (completed < amount)
+        {
+            Bot.Wait.ForTrue(HasCompletionEvidence, 3);
+
+            if (HasCompletionEvidence())
+                completed = amount;
+            else if (amount == 1)
+            {
+                Core.Logger(
+                    $"{scrollName} multi completion was not confirmed. Retrying one turn-in with normal completion.",
+                    "PrepareScrolls"
+                );
+
+                if (!PrepareScrollQuestTurnIn(quest.ID))
+                    return ScrollPreparationFailed(
+                        scrollName,
+                        $"quest {quest.ID} could not be prepared for the normal completion fallback"
+                    );
+
+                bool fallbackCompleted = Core.EnsureComplete(quest.ID);
+                Bot.Wait.ForTrue(HasCompletionEvidence, 3);
+
+                if (fallbackCompleted || HasCompletionEvidence())
+                    completed = amount;
+            }
+        }
+
+        if (completed < amount && !HasCompletionEvidence())
+        {
+            int remainingTurnIns = amount - ConfirmedTurnIns();
+            Core.Logger(
+                $"{scrollName} completion is still unconfirmed. Retrying {remainingTurnIns} remaining turn-in{(remainingTurnIns == 1 ? string.Empty : "s")} after stabilization.",
+                "PrepareScrolls"
+            );
+
+            if (!PrepareScrollQuestTurnIn(quest.ID))
+                return ScrollPreparationFailed(
+                    scrollName,
+                    $"quest {quest.ID} could not be prepared for the final completion fallback"
+                );
+
+            int finalCompleted = Core.EnsureCompleteMulti(quest.ID, remainingTurnIns);
+            Bot.Wait.ForTrue(HasCompletionEvidence, 3);
+
+            if (finalCompleted >= remainingTurnIns || HasCompletionEvidence())
+                completed = amount;
+            else
+                return ScrollPreparationFailed(
+                    scrollName,
+                    $"all bounded completion attempts failed; {ConfirmedTurnIns()} of {amount} requested turn-ins were confirmed"
+                );
+        }
 
         if (completed < amount)
             return ScrollPreparationFailed(
