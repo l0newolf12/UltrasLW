@@ -508,6 +508,7 @@ public class CoreLoneWolf
         new()
         {
             ClassName = "Imperial Chunin",
+            AlternateClassNames = new[] { "Chunin" },
             Skills = new[] { 2, 3, 1, 4 },
             BaseEnhancement = EnhancementType.Lucky,
             CapeEnhancement = CapeSpecial.Lament,
@@ -559,6 +560,7 @@ public class CoreLoneWolf
         new()
         {
             ClassName = "Void Highlord",
+            AlternateClassNames = new[] { "Debris Highlord", "Void Highlord (IoDA)" },
             Skills = new[] { 1, 2, 4 },
             SkillMode = SkillEngineMode.VoidHighlord,
             BaseEnhancement = EnhancementType.Lucky,
@@ -627,6 +629,7 @@ public class CoreLoneWolf
         new()
         {
             ClassName = "Bard",
+            AlternateClassNames = new[] { "Troubador of Love" },
             Skills = new[] { 1, 4, 2, 3, 1, 2, 3, 4, 1, 3, 4, 2 },
             SkillMode = SkillEngineMode.Strict,
             BaseEnhancement = EnhancementType.Wizard,
@@ -700,6 +703,8 @@ public class CoreLoneWolf
                 "Chaos Slayer Mystic",
                 "Chaos Slayer Cleric",
                 "Chaos Slayer Thief",
+                "Chaos Champion Prime",
+                "Dark Chaos Berserker",
             },
             Skills = new[] { 3, 2, 4, 1 },
             BaseEnhancement = EnhancementType.Lucky,
