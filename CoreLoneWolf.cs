@@ -85,6 +85,14 @@ public class CoreLoneWolf
     private const string ChronoShadowHunterGunslingerAura = "Gunslinger Stance";
     private const string GuardianSpiritAura = "Guardian Spirit";
     private static readonly int[] SSOTLoopSkills = { 4, 2, 3, 1, 2, 1 };
+    private static readonly int[] ArchivistLoopSkills =
+    {
+        0, 1, 3, 0, 3, 2, 0, 3, 1, 0, 3, 3, 0, 2, 2, 0, 2, 1, 0, 2, 3, 0, 2, 2, 4,
+    };
+    private static readonly int[] DracoKnightLoopSkills = { 2, 1, 3, 2, 1, 4, 1, 2, 3 };
+    private static readonly int[] MartialArtistLoopSkills = { 4, 2, 3, 2, 1, 2, 1, 2, 3, 1, 2 };
+    private static readonly int[] ChaosShaperUnitySkills = { 2 };
+    private static readonly int[] ChaosShaperChaosSkills = { 3, 2 };
 
     private enum PotionCategory
     {
@@ -165,6 +173,9 @@ public class CoreLoneWolf
     private string? maintainedPotion;
     private int kingsEchoManaThreshold = 12;
     private bool ssotOpeningComplete;
+    private bool archivistOpeningComplete;
+    private bool dracoKnightOpeningComplete;
+    private bool martialArtistOpeningComplete;
     private int blockedStrictSkill;
     private string blockedStrictSkillSelfAura = string.Empty;
     private string blockedStrictSkillTargetAura = string.Empty;
@@ -343,6 +354,151 @@ public class CoreLoneWolf
                 WeaponSpecial.Lacerate,
                 WeaponSpecial.Health_Vamp,
             },
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
+        };
+
+    public ClassPreset GreatThief() =>
+        new()
+        {
+            ClassName = "Great Thief",
+            Skills = new[] { 4, 1, 3 },
+            SkillMode = SkillEngineMode.GreatThief,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Arcanas_Concerto,
+            WeaponEnhancementFallbacks = new[]
+            {
+                WeaponSpecial.Praxis,
+                WeaponSpecial.Health_Vamp,
+            },
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
+        };
+
+    public ClassPreset GlaceranWarlord(bool healingMode = false) =>
+        new()
+        {
+            ClassName = "Glaceran Warlord",
+            AlternateClassNames = new[]
+            {
+                "Glacial Warlord",
+                "Dark Glaceran Warlord",
+                "Savage Glaceran Warlord",
+            },
+            Skills = healingMode
+                ? new[] { 1, 2, 1, 1, 3, 1, 4 }
+                : new[] { 1, 2, 1, 1, 3, 1, 1, 4, 2, 1 },
+            SkillMode = SkillEngineMode.Strict,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = healingMode ? CapeSpecial.Penitence : CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Ravenous,
+            Tonic = "Might Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
+        };
+
+    public ClassPreset ArchivistOfTime() =>
+        new()
+        {
+            ClassName = "Archivist of Time",
+            AlternateClassNames = new[] { "Archivist of Temporis" },
+            Skills = new[]
+            {
+                0, 1, 3, 0, 3, 2, 0, 3, 1, 0, 2, 2, 0, 2, 1, 0, 2, 3, 0, 3, 3, 0, 2, 2, 4,
+            },
+            SkillMode = SkillEngineMode.ArchivistOfTime,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Ravenous,
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
+        };
+
+    public ClassPreset DracoKnight() =>
+        new()
+        {
+            ClassName = "Draco Knight",
+            AlternateClassNames = new[] { "Dragon Knight", "Drakkar Knight" },
+            Skills = new[] { 2, 3, 1, 4, 2, 1, 2, 3, 1, 4, 2, 1, 2, 3, 1, 4, 2, 1 },
+            SkillMode = SkillEngineMode.DracoKnight,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Valiance,
+            Tonic = "Sage Tonic",
+            Elixir = "Potent Destruction Elixir",
+            CombatPotion = "Potent Honor Potion",
+        };
+
+    public ClassPreset PhantomChronomancer() =>
+        new()
+        {
+            ClassName = "Phantom Chronomancer",
+            AlternateClassNames = new[] { "Phantasm Chronomancer" },
+            Skills = new[] { 3, 1, 2, 1, 2, 3, 2, 1, 2, 1, 2, 3, 1, 3, 2, 1, 2, 1, 3, 4 },
+            SkillMode = SkillEngineMode.Strict,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Examen,
+            WeaponEnhancement = WeaponSpecial.Ravenous,
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
+        };
+
+    public ClassPreset InterstellarKnight() =>
+        new()
+        {
+            ClassName = "Interstellar Knight",
+            AlternateClassNames = new[] { "Infinity Knight" },
+            Skills = new[] { 2, 4, 1, 2, 1, 4, 1, 1, 2, 1, 1, 2, 3 },
+            SkillMode = SkillEngineMode.Strict,
+            BaseEnhancement = EnhancementType.Wizard,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Pneuma,
+            WeaponEnhancement = WeaponSpecial.Acheron,
+            WeaponEnhancementFallbacks = new[]
+            {
+                WeaponSpecial.Ravenous, WeaponSpecial.Valiance, WeaponSpecial.Health_Vamp,
+            },
+            Tonic = "Sage Tonic",
+            Elixir = "Potent Malevolence Elixir",
+            CombatPotion = "Potent Honor Potion",
+        };
+
+    public ClassPreset MartialArtist() =>
+        new()
+        {
+            ClassName = "Martial Artist",
+            AlternateClassNames = new[] { "Master Martial Artist" },
+            Skills = new[] { 1, 2, 1, 2, 2, 3, 2, 1 },
+            SkillMode = SkillEngineMode.MartialArtist,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Ravenous,
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Battle Elixir",
+            CombatPotion = "Felicitous Philtre",
+        };
+
+    public ClassPreset ChaosShaper() =>
+        new()
+        {
+            ClassName = "Chaos Shaper",
+            Skills = new[] { 1 },
+            SkillMode = SkillEngineMode.ChaosShaper,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Ravenous,
             Tonic = "Fate Tonic",
             Elixir = "Potent Battle Elixir",
             CombatPotion = "Felicitous Philtre",
@@ -612,6 +768,7 @@ public class CoreLoneWolf
         new()
         {
             ClassName = "StoneCrusher",
+            AlternateClassNames = new[] { "Infinity Titan" },
             Skills = new[] { 3, 2, 4, 1 },
             BaseEnhancement = EnhancementType.Fighter,
             CapeEnhancement = CapeSpecial.Absolution,
@@ -884,6 +1041,12 @@ public class CoreLoneWolf
         skillIndex = 0;
         if (mode == SkillEngineMode.ShadowStalkerOfTime)
             ResetSSOT();
+        if (mode == SkillEngineMode.ArchivistOfTime)
+            ResetArchivist();
+        if (mode == SkillEngineMode.DracoKnight)
+            ResetDracoKnight();
+        if (mode == SkillEngineMode.MartialArtist)
+            ResetMartialArtist();
         if (mode == SkillEngineMode.ChronoShadowHunterStable)
             ResetCSSNormalMode();
         if (mode == SkillEngineMode.ChronoShadowHunterGunslinger)
@@ -1582,6 +1745,12 @@ public class CoreLoneWolf
                 {
                     if (skillEngineMode == SkillEngineMode.ShadowStalkerOfTime)
                         ResetSSOT();
+                    if (skillEngineMode == SkillEngineMode.ArchivistOfTime)
+                        ResetArchivist();
+                    if (skillEngineMode == SkillEngineMode.DracoKnight)
+                        ResetDracoKnight();
+                    if (skillEngineMode == SkillEngineMode.MartialArtist)
+                        ResetMartialArtist();
 
                     if (
                         skillEngineMode is SkillEngineMode.Simple
@@ -1590,6 +1759,8 @@ public class CoreLoneWolf
                             or SkillEngineMode.VoidHighlord
                             or SkillEngineMode.ChaosAvengerOptimized
                             or SkillEngineMode.ScionOfFlames
+                            or SkillEngineMode.GreatThief
+                            or SkillEngineMode.ChaosShaper
                     )
                         skillIndex = 0;
 
@@ -1853,6 +2024,16 @@ public class CoreLoneWolf
                             skillEngineMode == SkillEngineMode.ShadowStalkerOfTime
                         )
                             SSOTSkillEngine();
+                        else if (skillEngineMode == SkillEngineMode.GreatThief)
+                            GreatThiefSkillEngine();
+                        else if (skillEngineMode == SkillEngineMode.ArchivistOfTime)
+                            ArchivistSkillEngine();
+                        else if (skillEngineMode == SkillEngineMode.DracoKnight)
+                            DracoKnightSkillEngine();
+                        else if (skillEngineMode == SkillEngineMode.MartialArtist)
+                            MartialArtistSkillEngine();
+                        else if (skillEngineMode == SkillEngineMode.ChaosShaper)
+                            ChaosShaperSkillEngine();
                         else if (
                             skillEngineMode == SkillEngineMode.Simple
                             && blockedSimpleSkill is >= 1 and <= 4
@@ -2208,6 +2389,29 @@ public class CoreLoneWolf
         CustomSkillEngine();
     }
 
+    private void GreatThiefSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+            return;
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        var stealth = Bot.Self.GetAura("Stealth");
+        if (
+            stealth == null
+            || stealth.ExpiresAt - DateTimeOffset.Now <= TimeSpan.FromSeconds(1)
+        )
+        {
+            if (Bot.Skills.CanUseSkill(2))
+                Bot.Skills.UseSkill(2);
+
+            return;
+        }
+
+        CustomSkillEngine();
+    }
+
     private void LightCasterHealingSkillEngine()
     {
         if (Bot.Skills.CanUseSkill(3))
@@ -2346,6 +2550,193 @@ public class CoreLoneWolf
 
         if (finalOpeningSkill && skillIndex == 0)
             ssotOpeningComplete = true;
+    }
+
+    private void ResetArchivist()
+    {
+        archivistOpeningComplete = false;
+        skillIndex = 0;
+    }
+
+    private void ArchivistSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+        {
+            ResetArchivist();
+            return;
+        }
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        if (archivistOpeningComplete)
+        {
+            // Repeat the final full spell only at a spell boundary while Rewrite Time is unavailable.
+            if (
+                skillIndex == ArchivistLoopSkills.Length - 1
+                && !Bot.Skills.CanUseSkill(4)
+            )
+            {
+                if (!Bot.Skills.CanUseSkill(0))
+                    return;
+
+                skillIndex = ArchivistLoopSkills.Length - 4;
+            }
+
+            StrictSkillEngine(ArchivistLoopSkills, ref skillIndex);
+            return;
+        }
+
+        if (skillList.Length == 0)
+            return;
+
+        bool finalOpeningSkill = skillIndex == skillList.Length - 1;
+        StrictSkillEngine(skillList, ref skillIndex);
+
+        if (finalOpeningSkill && skillIndex == 0)
+            archivistOpeningComplete = true;
+    }
+
+    private void ResetDracoKnight()
+    {
+        dracoKnightOpeningComplete = false;
+        skillIndex = 0;
+    }
+
+    private void DracoKnightSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+        {
+            ResetDracoKnight();
+            return;
+        }
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        if (dracoKnightOpeningComplete)
+        {
+            StrictSkillEngine(DracoKnightLoopSkills, ref skillIndex);
+            return;
+        }
+
+        if (skillList.Length == 0)
+            return;
+
+        bool finalOpeningSkill = skillIndex == skillList.Length - 1;
+        StrictSkillEngine(skillList, ref skillIndex);
+
+        if (finalOpeningSkill && skillIndex == 0)
+            dracoKnightOpeningComplete = true;
+    }
+
+    private void ResetMartialArtist()
+    {
+        martialArtistOpeningComplete = false;
+        skillIndex = 0;
+    }
+
+    private bool HasMartialArtistMana(int skill)
+    {
+        try
+        {
+            JObject? action = Bot.Flash.GetGameObject<JObject>(
+                $"world.actions.active[{skill}]"
+            );
+            JObject? player = Bot.Flash.GetGameObject<JObject>("world.myAvatar.dataLeaf");
+            JToken? costToken = action?["mp"];
+            JToken? manaToken = player?["intMP"];
+            JToken? modifierToken = player?["sta"]?["$cmc"];
+            if (
+                costToken?.Type is not (JTokenType.Integer or JTokenType.Float)
+                || manaToken?.Type is not (JTokenType.Integer or JTokenType.Float)
+                || modifierToken?.Type is not (JTokenType.Integer or JTokenType.Float)
+            )
+                return false;
+
+            double cost = (double)costToken!;
+            double mana = (double)manaToken!;
+            double modifier = (double)modifierToken!;
+            // AS3 Math.round resolves half ties toward positive infinity.
+            double requiredMana = Math.Floor(cost * modifier + 0.5);
+            return double.IsFinite(cost)
+                && double.IsFinite(mana)
+                && double.IsFinite(modifier)
+                && double.IsFinite(requiredMana)
+                && mana >= requiredMana;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void MartialArtistSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+        {
+            ResetMartialArtist();
+            return;
+        }
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        if (martialArtistOpeningComplete)
+        {
+            if (skillIndex == 0 && !Bot.Skills.CanUseSkill(4))
+            {
+                if (Bot.Skills.CanUseSkill(2) && HasMartialArtistMana(2))
+                    Bot.Skills.UseSkill(2);
+                return;
+            }
+
+            int skill = MartialArtistLoopSkills[skillIndex];
+            if (!Bot.Skills.CanUseSkill(skill) || !HasMartialArtistMana(skill))
+                return;
+
+            StrictSkillEngine(MartialArtistLoopSkills, ref skillIndex);
+            return;
+        }
+
+        if (skillList.Length == 0)
+            return;
+
+        int openingSkill = skillList[skillIndex];
+        if (!Bot.Skills.CanUseSkill(openingSkill) || !HasMartialArtistMana(openingSkill))
+            return;
+
+        bool finalOpeningSkill = skillIndex == skillList.Length - 1;
+        StrictSkillEngine(skillList, ref skillIndex);
+
+        if (finalOpeningSkill && skillIndex == 0)
+            martialArtistOpeningComplete = true;
+    }
+
+    private void ChaosShaperSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+        {
+            skillIndex = 0;
+            return;
+        }
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        if (skillIndex > 0)
+        {
+            StrictSkillEngine(ChaosShaperChaosSkills, ref skillIndex);
+            return;
+        }
+
+        var auras = Bot.Self.Auras;
+        if (auras.Any(aura => string.Equals(aura.Name, "Unity", StringComparison.OrdinalIgnoreCase)))
+            StrictSkillEngine(ChaosShaperUnitySkills, ref skillIndex);
+        else if (auras.Any(aura => string.Equals(aura.Name, "Chaos", StringComparison.OrdinalIgnoreCase)))
+            StrictSkillEngine(ChaosShaperChaosSkills, ref skillIndex);
+        else
+            StrictSkillEngine(skillList, ref skillIndex);
     }
 
     public void KingsEchoSkillEngine(bool useSurvivalSkill)
@@ -6220,6 +6611,11 @@ public enum SkillEngineMode
     Guardian,
     ShadowStalkerOfTime,
     ArchFiendNoHealing,
+    GreatThief,
+    ArchivistOfTime,
+    DracoKnight,
+    MartialArtist,
+    ChaosShaper,
 }
 
 public class ClassPreset

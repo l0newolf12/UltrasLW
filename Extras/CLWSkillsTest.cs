@@ -42,6 +42,14 @@ public class CLWSkillsTest
         Imperial_Chunin,
         SSOT,
         Paladin_Chronomancer,
+        Great_Thief,
+        Glaceran_Warlord,
+        Archivist_of_Time,
+        Draco_Knight,
+        Phantom_Chronomancer,
+        Interstellar_Knight,
+        Martial_Artist,
+        Chaos_Shaper,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -104,6 +112,12 @@ public class CLWSkillsTest
             "Wait for Branded to be consumed before using the next array skill.",
             false
         ),
+        new Option<bool>(
+            "UseGlaceranWarlordHealingMode",
+            "Use Glaceran Warlord Healing Mode",
+            "Use the healing Strict combo and Penitence cape for Glaceran Warlord.",
+            false
+        ),
         new Option<int>(
             "TestDurationSeconds",
             "Test Duration Seconds",
@@ -155,12 +169,16 @@ public class CLWSkillsTest
         bool useChaosAvengerOptimizedMode = Bot.Config.Get<bool>(
             "UseChaosAvengerOptimizedMode"
         );
+        bool useGlaceranWarlordHealingMode = Bot.Config.Get<bool>(
+            "UseGlaceranWarlordHealingMode"
+        );
         ClassPreset preset = GetClassPreset(
             selectedPreset,
             useLightCasterHealingMode,
             useShamanFarmMode,
             useChronoShadowHunterGunslingerMode,
-            useChaosAvengerOptimizedMode
+            useChaosAvengerOptimizedMode,
+            useGlaceranWarlordHealingMode
         );
 
         Core.Join("classhall");
@@ -174,7 +192,8 @@ public class CLWSkillsTest
                 preset.BaseEnhancement,
                 preset.CapeEnhancement,
                 preset.HelmEnhancement,
-                preset.WeaponEnhancement
+                preset.WeaponEnhancement,
+                weaponFallbacks: preset.WeaponEnhancementFallbacks
             );
 
         if (usePotions)
@@ -242,7 +261,8 @@ public class CLWSkillsTest
         bool useLightCasterHealingMode,
         bool useShamanFarmMode,
         bool useChronoShadowHunterGunslingerMode,
-        bool useChaosAvengerOptimizedMode
+        bool useChaosAvengerOptimizedMode,
+        bool useGlaceranWarlordHealingMode
     ) =>
         selectedPreset switch
         {
@@ -277,6 +297,16 @@ public class CLWSkillsTest
             SkillPresetChoice.SSOT => LoneWolf.SSOT(),
             SkillPresetChoice.Paladin_Chronomancer =>
                 LoneWolf.PaladinChronomancer(),
+            SkillPresetChoice.Great_Thief => LoneWolf.GreatThief(),
+            SkillPresetChoice.Glaceran_Warlord => LoneWolf.GlaceranWarlord(
+                useGlaceranWarlordHealingMode
+            ),
+            SkillPresetChoice.Archivist_of_Time => LoneWolf.ArchivistOfTime(),
+            SkillPresetChoice.Draco_Knight => LoneWolf.DracoKnight(),
+            SkillPresetChoice.Phantom_Chronomancer => LoneWolf.PhantomChronomancer(),
+            SkillPresetChoice.Interstellar_Knight => LoneWolf.InterstellarKnight(),
+            SkillPresetChoice.Martial_Artist => LoneWolf.MartialArtist(),
+            SkillPresetChoice.Chaos_Shaper => LoneWolf.ChaosShaper(),
             _ => LoneWolf.LegionRevenant(),
         };
 }
