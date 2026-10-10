@@ -902,7 +902,7 @@ public class CoreLoneWolf
                 return;
             }
 
-            if (!Core.HasSpace)
+            if (!Core.HasSpaceFor(Bot.Bank.GetItem(className)))
             {
                 Core.Logger(
                     $"{className} could not be moved from bank because no inventory slot is available.",
@@ -3086,7 +3086,10 @@ public class CoreLoneWolf
         )
             return divineElixir;
 
-        if (!Core.HasSpace)
+        ItemBase? divineElixirItem = Core.EnsureLoad(1854)?.Rewards.FirstOrDefault(item =>
+            item.Name.Equals(divineElixir, StringComparison.OrdinalIgnoreCase)
+        );
+        if (!Core.HasSpaceFor(divineElixirItem, 10))
         {
             Core.Logger(
                 $"{divineElixir} skipped because no free inventory slot is available.",
@@ -3307,16 +3310,6 @@ public class CoreLoneWolf
                 return;
             }
 
-            int requiredSlots = Bot.Inventory.Contains(voucherName) ? 1 : 2;
-            if (Bot.Inventory.FreeSlots < requiredSlots)
-            {
-                Core.Logger(
-                    $"{itemName} skipped because {requiredSlots} free inventory slots are required.",
-                    "PreparePotions"
-                );
-                return;
-            }
-
             if (Bot.Bank.Contains(voucherName) && !MoveBankItemToInventory(voucherName))
             {
                 Core.Logger(
@@ -3343,7 +3336,7 @@ public class CoreLoneWolf
 
             if (missingVouchers > 0)
             {
-                if (!Core.HasSpace)
+                if (!HasPurchaseSpace(PotionShopMap, PotionShopId, voucherName, voucherQuantity))
                 {
                     Core.Logger(
                         $"{itemName} skipped because no free inventory slot is available.",
@@ -3369,7 +3362,7 @@ public class CoreLoneWolf
                 }
             }
 
-            if (!Core.HasSpace)
+            if (!HasPurchaseSpace(PotionShopMap, PotionShopId, itemName, potionQuantity))
             {
                 Core.Logger(
                     $"{itemName} skipped because no free inventory slot is available.",
@@ -3416,21 +3409,21 @@ public class CoreLoneWolf
 
         try
         {
-            if (!Bot.Inventory.Contains(itemName))
-            {
-                Core.Logger(
-                    $"{itemName} skipped because it is not in inventory.",
-                    "UsePotions"
-                );
-                return;
-            }
-
             string auraName = GetPotionAuraName(itemName);
             bool auraActive = Bot.Self.HasActiveAura(auraName);
 
             if (auraActive && category != PotionCategory.CombatPotion)
             {
                 Core.Logger($"{itemName} already active.", "UsePotions");
+                return;
+            }
+
+            if (!Bot.Inventory.Contains(itemName))
+            {
+                Core.Logger(
+                    $"{itemName} skipped because it is not in inventory.",
+                    "UsePotions"
+                );
                 return;
             }
 
@@ -3490,7 +3483,7 @@ public class CoreLoneWolf
         if (!Bot.Bank.Contains(itemName))
             return false;
 
-        if (!Bot.Inventory.Contains(itemName) && !Core.HasSpace)
+        if (!Core.HasSpaceFor(Bot.Bank.GetItem(itemName)))
             return false;
 
         int inventoryQuantity = Bot.Inventory.GetQuantity(itemName);
@@ -3500,6 +3493,26 @@ public class CoreLoneWolf
             14
         );
         return Bot.Inventory.GetQuantity(itemName) > inventoryQuantity;
+    }
+
+    private bool HasPurchaseSpace(
+        string map,
+        int shopId,
+        string itemName,
+        int quantity,
+        int shopItemId = 0,
+        int index = 0
+    )
+    {
+        List<ShopItem> items = Core.GetShopItems(map, shopId);
+        ShopItem? item = Core.parseShopItem(items, shopId, itemName, shopItemId);
+        if (item == null)
+            return false;
+
+        // Match Core.BuyItem's final ItemID/index selection and purchase quantity.
+        List<ShopItem> matches = items.Where(candidate => candidate.ID == item.ID).ToList();
+        item = matches.Count > index ? matches[index] : matches.FirstOrDefault();
+        return item != null && Core.HasSpaceFor(item, Core._CalcBuyQuantity(item, quantity));
     }
 
     private static bool IsSupportedPotion(
@@ -3769,7 +3782,10 @@ public class CoreLoneWolf
 
             if (Bot.Inventory.GetQuantity(parchment) < 2)
             {
-                if (!EnsureScrollOutputSpace(EnrageScroll, parchment))
+                ItemBase? parchmentItem = Core.EnsureLoad(2260)?.Rewards.FirstOrDefault(item =>
+                    item.Name.Equals(parchment, StringComparison.OrdinalIgnoreCase)
+                );
+                if (!EnsureScrollOutputSpace(EnrageScroll, parchmentItem, 2))
                     return false;
 
                 Core.AddDrop(parchment);
@@ -3789,7 +3805,7 @@ public class CoreLoneWolf
 
             Core.Join(SpellcraftMap);
 
-            if (!EnsureScrollOutputSpace(EnrageScroll, ink))
+            if (!EnsureScrollPurchaseSpace(EnrageScroll, ink, SpellInkShopId, 5))
                 return false;
 
             Core.BuyItem(SpellcraftMap, SpellInkShopId, ink, 5);
@@ -3817,7 +3833,14 @@ public class CoreLoneWolf
         if (Bot.Inventory.GetQuantity(itemName) >= quantity)
             return true;
 
-        if (!EnsureScrollOutputSpace(EnrageScroll, itemName))
+        if (!EnsureScrollPurchaseSpace(
+            EnrageScroll,
+            itemName,
+            ArcaneQuillShopId,
+            quantity,
+            shopItemID,
+            index
+        ))
             return false;
 
         Core.BuyItem(
@@ -3848,7 +3871,10 @@ public class CoreLoneWolf
         if (Bot.ShouldExit)
             return false;
 
-        if (!EnsureScrollOutputSpace(EnrageScroll, EnrageScroll))
+        ItemBase? reward = Core.EnsureLoad(EnrageQuestId)?.Rewards.FirstOrDefault(item =>
+            item.Name.Equals(EnrageScroll, StringComparison.OrdinalIgnoreCase)
+        );
+        if (!EnsureScrollOutputSpace(EnrageScroll, reward, amount * EnrageRewardQuantity))
             return false;
 
         int previousQuantity = Bot.Inventory.GetQuantity(EnrageScroll);
@@ -4188,7 +4214,10 @@ public class CoreLoneWolf
 
             if (Bot.Inventory.GetQuantity(parchment) < 2)
             {
-                if (!EnsureScrollOutputSpace(scrollName, parchment))
+                ItemBase? parchmentItem = Core.EnsureLoad(2260)?.Rewards.FirstOrDefault(item =>
+                    item.Name.Equals(parchment, StringComparison.OrdinalIgnoreCase)
+                );
+                if (!EnsureScrollOutputSpace(scrollName, parchmentItem, 2))
                     return false;
 
                 Core.AddDrop(parchment);
@@ -4220,7 +4249,7 @@ public class CoreLoneWolf
                     $"{SpellcraftMap} could not be joined"
                 );
 
-            if (!EnsureScrollOutputSpace(scrollName, requirement.Name))
+            if (!EnsureScrollPurchaseSpace(scrollName, requirement.Name, SpellInkShopId, 5))
                 return false;
 
             Core.BuyItem(SpellcraftMap, SpellInkShopId, requirement.Name, 5);
@@ -4256,7 +4285,14 @@ public class CoreLoneWolf
         if (Bot.Inventory.GetQuantity(itemName) >= quantity)
             return true;
 
-        if (!EnsureScrollOutputSpace(scrollName, itemName))
+        if (!EnsureScrollPurchaseSpace(
+            scrollName,
+            itemName,
+            ArcaneQuillShopId,
+            quantity,
+            shopItemID,
+            index
+        ))
             return false;
 
         Core.BuyItem(
@@ -4306,7 +4342,7 @@ public class CoreLoneWolf
                 $"{SpellcraftMap} could not be joined"
             );
 
-        if (!EnsureScrollOutputSpace(scrollName, scrollName))
+        if (!EnsureScrollOutputSpace(scrollName, reward, amount * reward.Quantity))
             return false;
 
         int previousQuantity = Bot.Inventory.GetQuantity(scrollName);
@@ -4441,7 +4477,7 @@ public class CoreLoneWolf
         if (!Bot.Bank.Contains(itemName))
             return true;
 
-        if (!Bot.Inventory.Contains(itemName) && !Core.HasSpace)
+        if (!Core.HasSpaceFor(Bot.Bank.GetItem(itemName)))
             return ScrollPreparationFailed(
                 scrollName,
                 $"no free inventory slot is available for {itemName}"
@@ -4459,14 +4495,34 @@ public class CoreLoneWolf
         );
     }
 
-    private bool EnsureScrollOutputSpace(string scrollName, string itemName)
+    private bool EnsureScrollPurchaseSpace(
+        string scrollName,
+        string itemName,
+        int shopId,
+        int quantity,
+        int shopItemId = 0,
+        int index = 0
+    )
     {
-        if (Bot.Inventory.Contains(itemName) || Core.HasSpace)
+        if (HasPurchaseSpace(SpellcraftMap, shopId, itemName, quantity, shopItemId, index))
             return true;
 
         return ScrollPreparationFailed(
             scrollName,
-            $"no free inventory slot is available for {itemName}"
+            $"destination inventory space or shop item data is unavailable for {itemName}"
+        );
+    }
+
+    private bool EnsureScrollOutputSpace(string scrollName, ItemBase? item, int quantity = 1)
+    {
+        if (Core.HasSpaceFor(item, quantity))
+            return true;
+
+        return ScrollPreparationFailed(
+            scrollName,
+            item == null
+                ? "item data for the inventory space check could not be loaded"
+                : $"no destination inventory slot is available for {item.Name}"
         );
     }
 

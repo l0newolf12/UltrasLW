@@ -539,7 +539,7 @@ public class GreatbladeOfTheEntwinedEclipse_LW
         if (TotalQuantity(itemName) < quantity)
             return false;
 
-        if (!Bot.Inventory.Contains(itemName) && !Core.HasSpace)
+        if (!Core.HasSpaceFor(Bot.Bank.GetItem(itemName)))
             return false;
 
         Bot.Bank.EnsureToInventory(itemName, loadBank: false);

@@ -368,7 +368,8 @@ public class UltraEzrajal_LW
 
         if (Bot.Bank.Contains(BattlestaffName))
         {
-            if (Bot.Inventory.FreeSlots <= 0)
+            // TEMPORARY Game4000 inventory change. Remove after the client inventory fix.
+            if (Core.InventoryBagFreeSlots <= 0)
             {
                 Core.Logger(
                     $"{BattlestaffName} is banked but no inventory slot is available. Mana Lock was skipped.",
@@ -393,7 +394,8 @@ public class UltraEzrajal_LW
             return true;
         }
 
-        if (Bot.Inventory.FreeSlots <= 0)
+        // TEMPORARY Game4000 inventory change. Remove after the client inventory fix.
+        if (Core.InventoryBagFreeSlots <= 0)
         {
             Core.Logger(
                 $"{BattlestaffName} could not be purchased because no inventory slot is available. Mana Lock was skipped.",

@@ -332,7 +332,7 @@ public class AscendEclipse_LW
         if (!Bot.Bank.Contains(RiteOfAscension))
             return Failure($"{RiteOfAscension} is not in inventory or bank.");
 
-        if (!Core.HasSpace)
+        if (!Core.HasSpaceFor(Bot.Bank.GetItem(RiteOfAscension)))
             return Failure($"{RiteOfAscension} cannot be moved because the inventory is full.");
 
         Bot.Bank.EnsureToInventory(RiteOfAscension);

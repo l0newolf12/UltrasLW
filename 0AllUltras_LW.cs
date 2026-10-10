@@ -624,7 +624,7 @@ public class AllUltras_LW
 
         if (Bot.Bank.Contains(oracleName))
         {
-            if (!Core.HasSpace)
+            if (!Core.HasSpaceFor(Bot.Bank.GetItem(oracleName)))
                 return OracleFailure(
                     "Oracle could not be moved from bank because no inventory slot is available."
                 );
@@ -639,7 +639,9 @@ public class AllUltras_LW
             return true;
         }
 
-        if (!Core.HasSpace)
+        if (!Core.HasSpaceFor(Core.parseShopItem(
+            Core.GetShopItems("classhalla", 759), 759, oracleName
+        )))
             return OracleFailure(
                 "Oracle could not be purchased because no inventory slot is available."
             );

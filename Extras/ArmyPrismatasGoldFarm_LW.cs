@@ -399,7 +399,7 @@ public class ArmyPrismatasGoldFarm_LW
         if (bankQuantity <= 0)
             return true;
 
-        if (!Bot.Inventory.Contains(itemName) && !Core.HasSpace)
+        if (!Core.HasSpaceFor(Bot.Bank.GetItem(itemName)))
         {
             return Fatal(
                 $"{itemName} cannot be moved from bank because the inventory is full.",

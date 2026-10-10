@@ -243,7 +243,7 @@ public class KathoolDepths_LW
 
         if (Bot.Bank.Contains(Vigil))
         {
-            if (!Bot.Inventory.Contains(Vigil) && !Core.HasSpace)
+            if (!Core.HasSpaceFor(Bot.Bank.GetItem(Vigil)))
             {
                 return Fatal(
                     "Vigil is banked but there is no inventory space to move it.",
