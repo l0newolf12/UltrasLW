@@ -104,7 +104,7 @@ public class UltraEzrajal_LW
             "SkipManaLock",
             "Skip Mana Lock?",
             "Skip the Battle Oracle Battlestaff Mana Lock preparation.",
-            false
+            true
         ),
     };
 

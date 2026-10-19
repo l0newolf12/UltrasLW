@@ -2402,10 +2402,10 @@ public class CoreLoneWolf
         if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
             return;
 
-        var stealth = Bot.Self.GetAura("Stealth");
+        var stealth = Bot.Self.GetAuraSnapshot("Stealth");
         if (
             stealth == null
-            || stealth.ExpiresAt - DateTimeOffset.Now <= TimeSpan.FromSeconds(1)
+            || stealth.RemainingTime <= 1
         )
         {
             if (Bot.Skills.CanUseSkill(2))

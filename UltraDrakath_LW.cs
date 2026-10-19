@@ -24,12 +24,7 @@ public class UltraDrakath_LW
         Optimized,
         Pay2Win,
         Pay2Win2,
-        Test,
-        Test2,
-        Test3,
-        Test4,
-        Test5,
-        Test6,
+        Pay2Win3,
     }
 
     private enum FightResult
@@ -73,13 +68,13 @@ public class UltraDrakath_LW
         4_500_000,
     };
 
-    private static readonly int[] Test3LegionRevenantTauntThresholds =
+    private static readonly int[] Pay2WinLegionRevenantTauntThresholds =
     {
         18_500_000,
         14_500_000,
     };
 
-    private static readonly int[] Test3ArchPaladinTauntThresholds =
+    private static readonly int[] Pay2WinArchPaladinTauntThresholds =
     {
         16_500_000,
         12_500_000,
@@ -88,22 +83,20 @@ public class UltraDrakath_LW
         4_500_000,
     };
 
-    private static readonly int[] Test2PaladinChronomancerTauntThresholds =
+    private static readonly int[] Pay2Win2PaladinChronomancerTauntThresholds =
     {
-        16_500_000,
-        12_500_000,
+        18_500_000,
+        14_500_000,
         8_500_000,
         6_500_000,
         4_500_000,
     };
 
-    private static readonly int[] Test2LegionRevenantTauntThresholds =
+    private static readonly int[] Pay2Win2LordOfOrderTauntThresholds =
     {
-        18_500_000,
-        14_500_000,
+        16_500_000,
+        12_500_000,
     };
-
-    private static readonly int[] TimedLordOfOrderSkills = { 3, 1, 4 };
 
     private const string LogPrefix = "Champion Drakath LW";
     private const string SyncFileName = "UltraDrakath_LW.sync";
@@ -118,8 +111,6 @@ public class UltraDrakath_LW
     private const string PrerequisiteQuestName = "The Final Showdown!";
     private const int MinimumLevel = 80;
     private const int BossMapId = 1;
-    private const int TimedLordOfOrderHealingHealth = 10_000_000;
-    private const int TimedLordOfOrderHealThreshold = 40;
     private const int FightPollDelay = 150;
     private const int RespawnPollDelay = 500;
     private const int MaxFightAttempts = 3;
@@ -142,7 +133,7 @@ public class UltraDrakath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nPay2Win2: Guardian / PCM / LR / LOO\nTest: AI / AP / LR / LOO\nTest2: AI / PCM / LR / LOO\nTest3: Guardian / AP / LR / LOO\nTest4: AI / AP / LR / SC\nTest5: Guardian / PCM / LR / LOO\nTest6: Guardian / PCM / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nPay2Win2: Guardian / PCM / LR / LOO\nPay2Win3: Martial Artist / PCM / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -224,96 +215,45 @@ public class UltraDrakath_LW
 
         playerAlias = GetPlayerAlias();
         isTaunter = armyComposition == ArmyComposition.Pay2Win2
-            || armyComposition == ArmyComposition.Test4
-            || armyComposition == ArmyComposition.Test6
+            || armyComposition == ArmyComposition.Pay2Win3
             ? LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4)
             : LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(3);
 
         ClassPreset preset = GetClassPreset();
         if (
+            LoneWolf.IsArmyPlayer(1)
+            && armyComposition == ArmyComposition.Pay2Win3
+        )
+            preset.CapeEnhancement = CapeSpecial.Lament;
+
+        if (
             armyComposition == ArmyComposition.Pay2Win2
-            || armyComposition == ArmyComposition.Test5
-            || armyComposition == ArmyComposition.Test6
+            || armyComposition == ArmyComposition.Pay2Win3
         )
         {
             if (LoneWolf.IsArmyPlayer(2))
                 preset.CapeEnhancement = CapeSpecial.Lament;
             else if (LoneWolf.IsArmyPlayer(3))
             {
-                preset.WeaponEnhancement =
-                    armyComposition == ArmyComposition.Pay2Win2
-                        ? WeaponSpecial.Ravenous
-                        : WeaponSpecial.Arcanas_Concerto;
+                preset.WeaponEnhancement = WeaponSpecial.Ravenous;
                 preset.HelmEnhancement = HelmSpecial.None;
                 preset.CapeEnhancement = CapeSpecial.Lament;
                 preset.CombatPotion = "Felicitous Philtre";
             }
             else if (LoneWolf.IsArmyPlayer(4))
-            {
                 preset.HelmEnhancement = HelmSpecial.Forge;
-                preset.Tonic = armyComposition == ArmyComposition.Test5
-                    || armyComposition == ArmyComposition.Test6
-                    ? "Fate Tonic"
-                    : "Body Tonic";
-                if (armyComposition == ArmyComposition.Test5)
-                    preset.CombatPotion = "Felicitous Philtre";
-            }
         }
-        else if (armyComposition == ArmyComposition.Test4)
+        else if (armyComposition == ArmyComposition.Pay2Win)
         {
-            if (LoneWolf.IsArmyPlayer(1))
-            {
-                preset.HelmEnhancement = HelmSpecial.Forge;
-                preset.CapeEnhancement = CapeSpecial.Lament;
-            }
-            else if (LoneWolf.IsArmyPlayer(2))
-                preset.CapeEnhancement = CapeSpecial.Lament;
-            else if (LoneWolf.IsArmyPlayer(3))
-            {
-                preset.WeaponEnhancement = WeaponSpecial.Ravenous;
-                preset.HelmEnhancement = HelmSpecial.None;
-                preset.CapeEnhancement = CapeSpecial.Lament;
-                preset.Tonic = "Fate Tonic";
-            }
-        }
-        else if (
-            armyComposition == ArmyComposition.Pay2Win
-            || armyComposition == ArmyComposition.Test
-            || armyComposition == ArmyComposition.Test2
-            || armyComposition == ArmyComposition.Test3
-        )
-        {
-            if (
-                (
-                    armyComposition == ArmyComposition.Test
-                    || armyComposition == ArmyComposition.Test2
-                )
-                && LoneWolf.IsArmyPlayer(1)
-            )
-            {
-                preset.HelmEnhancement = HelmSpecial.Forge;
-                preset.CapeEnhancement = CapeSpecial.Lament;
-            }
-            else if (
-                armyComposition == ArmyComposition.Test2
-                && LoneWolf.IsArmyPlayer(2)
-            )
-                preset.CapeEnhancement = CapeSpecial.Lament;
-            else if (LoneWolf.IsArmyPlayer(2))
+            if (LoneWolf.IsArmyPlayer(2))
             {
                 preset.WeaponEnhancement = WeaponSpecial.Valiance;
                 preset.CapeEnhancement = CapeSpecial.Lament;
             }
             else if (LoneWolf.IsArmyPlayer(3))
             {
-                preset.WeaponEnhancement = armyComposition == ArmyComposition.Test2
-                    ? WeaponSpecial.Arcanas_Concerto
-                    : WeaponSpecial.Ravenous;
-                preset.HelmEnhancement =
-                    armyComposition == ArmyComposition.Test2
-                    || armyComposition == ArmyComposition.Test3
-                        ? HelmSpecial.None
-                        : HelmSpecial.Hearty;
+                preset.WeaponEnhancement = WeaponSpecial.Ravenous;
+                preset.HelmEnhancement = HelmSpecial.None;
                 preset.CapeEnhancement = CapeSpecial.Lament;
                 preset.Tonic = "Fate Tonic";
             }
@@ -429,9 +369,7 @@ public class UltraDrakath_LW
             if (
                 (
                     armyComposition == ArmyComposition.Pay2Win2
-                    || armyComposition == ArmyComposition.Test2
-                    || armyComposition == ArmyComposition.Test5
-                    || armyComposition == ArmyComposition.Test6
+                    || armyComposition == ArmyComposition.Pay2Win3
                 )
                 && LoneWolf.IsArmyPlayer(2)
             )
@@ -465,9 +403,7 @@ public class UltraDrakath_LW
         if (
             (
                 armyComposition != ArmyComposition.Pay2Win2
-                && armyComposition != ArmyComposition.Test2
-                && armyComposition != ArmyComposition.Test5
-                && armyComposition != ArmyComposition.Test6
+                && armyComposition != ArmyComposition.Pay2Win3
             )
             || !LoneWolf.IsArmyPlayer(2)
         )
@@ -480,11 +416,6 @@ public class UltraDrakath_LW
     {
         int[] tauntThresholds = GetTauntThresholds();
         int tauntIndex = 0;
-        bool useTimedLordOfOrderHealing =
-            armyComposition == ArmyComposition.Test
-            && LoneWolf.IsArmyPlayer(4);
-        bool timedLordOfOrderHealingActive = false;
-        bool taunterLowHealthEpisode = false;
 
         LoneWolf.StartSkillEngine(
             preset.Skills,
@@ -550,24 +481,6 @@ public class UltraDrakath_LW
 
             int bossHealth = LoneWolf.GetMonsterHP(BossMapId);
             LoneWolf.MaintainTarget(BossMapId);
-
-            if (
-                useTimedLordOfOrderHealing
-                && bossHealth > 0
-                && bossHealth <= TimedLordOfOrderHealingHealth
-            )
-            {
-                if (!timedLordOfOrderHealingActive)
-                {
-                    LoneWolf.SetSkillEngineSkills(TimedLordOfOrderSkills);
-                    timedLordOfOrderHealingActive = true;
-                    Core.Logger(
-                        $"{LogPrefix} {playerAlias} activated timed LOO healing at 10000000 HP."
-                    );
-                }
-
-                HandleTestLordOfOrderHealing(ref taunterLowHealthEpisode);
-            }
 
             if (
                 tauntIndex < tauntThresholds.Length
@@ -670,142 +583,40 @@ public class UltraDrakath_LW
             ? Bot.Config!.Get<T>("Weekly_Ultras", masterOptionName)
             : Bot.Config!.Get<T>(standaloneOptionName))!;
 
-    private void HandleTestLordOfOrderHealing(ref bool lowHealthEpisode)
-    {
-        bool archPaladinAvailable = TryGetLivingArmyPlayerHealthState(
-            2,
-            out bool archPaladinBelowThreshold
-        );
-        bool legionRevenantAvailable = TryGetLivingArmyPlayerHealthState(
-            3,
-            out bool legionRevenantBelowThreshold
-        );
-
-        if (
-            !lowHealthEpisode
-            && (
-                (archPaladinAvailable && archPaladinBelowThreshold)
-                || (legionRevenantAvailable && legionRevenantBelowThreshold)
-            )
-        )
-        {
-            LoneWolf.RequestPrioritySkill(2);
-            lowHealthEpisode = true;
-            Core.Logger(
-                $"{LogPrefix} {playerAlias} requested timed LOO heal because a taunter is below 40 percent HP."
-            );
-            return;
-        }
-
-        if (
-            lowHealthEpisode
-            && archPaladinAvailable
-            && legionRevenantAvailable
-            && !archPaladinBelowThreshold
-            && !legionRevenantBelowThreshold
-        )
-            lowHealthEpisode = false;
-    }
-
-    private bool TryGetLivingArmyPlayerHealthState(
-        int playerNumber,
-        out bool belowThreshold
-    )
-    {
-        belowThreshold = false;
-        string playerName = GetSetupOption<string>($"player{playerNumber}");
-
-        if (
-            string.IsNullOrWhiteSpace(playerName)
-            || !Bot.Map.TryGetPlayer(playerName, out var player)
-            || player == null
-            || player.HP <= 0
-            || player.MaxHP <= 0
-        )
-            return false;
-
-        belowThreshold =
-            (long)player.HP * 100
-            < (long)player.MaxHP * TimedLordOfOrderHealThreshold;
-        return true;
-    }
-
     private int[] GetTauntThresholds()
     {
+        if (armyComposition == ArmyComposition.Pay2Win)
+        {
+            if (LoneWolf.IsArmyPlayer(2))
+                return Pay2WinArchPaladinTauntThresholds;
+
+            return LoneWolf.IsArmyPlayer(3)
+                ? Pay2WinLegionRevenantTauntThresholds
+                : Array.Empty<int>();
+        }
+
         if (
-            armyComposition == ArmyComposition.Test2
-            || armyComposition == ArmyComposition.Test5
+            armyComposition == ArmyComposition.Pay2Win2
+            || armyComposition == ArmyComposition.Pay2Win3
         )
         {
             if (LoneWolf.IsArmyPlayer(2))
-                return Test2PaladinChronomancerTauntThresholds;
-
-            return LoneWolf.IsArmyPlayer(3)
-                ? Test2LegionRevenantTauntThresholds
-                : Array.Empty<int>();
-        }
-
-        if (armyComposition == ArmyComposition.Test6)
-        {
-            if (LoneWolf.IsArmyPlayer(2))
-                return Test2PaladinChronomancerTauntThresholds;
+                return Pay2Win2PaladinChronomancerTauntThresholds;
 
             return LoneWolf.IsArmyPlayer(4)
-                ? Test2LegionRevenantTauntThresholds
-                : Array.Empty<int>();
-        }
-
-        if (armyComposition == ArmyComposition.Test3)
-        {
-            if (LoneWolf.IsArmyPlayer(2))
-                return Test3ArchPaladinTauntThresholds;
-
-            return LoneWolf.IsArmyPlayer(3)
-                ? Test3LegionRevenantTauntThresholds
-                : Array.Empty<int>();
-        }
-
-        if (armyComposition == ArmyComposition.Test4)
-        {
-            if (LoneWolf.IsArmyPlayer(2))
-                return AdjustedStoneCrusherTauntThresholds;
-
-            return LoneWolf.IsArmyPlayer(4)
-                ? AdjustedArchPaladinTauntThresholds
-                : Array.Empty<int>();
-        }
-
-        if (armyComposition == ArmyComposition.Pay2Win2)
-        {
-            if (LoneWolf.IsArmyPlayer(2))
-                return AdjustedArchPaladinTauntThresholds;
-
-            return LoneWolf.IsArmyPlayer(4)
-                ? AdjustedStoneCrusherTauntThresholds
+                ? Pay2Win2LordOfOrderTauntThresholds
                 : Array.Empty<int>();
         }
 
         if (LoneWolf.IsArmyPlayer(2))
-            return armyComposition switch
-            {
-                ArmyComposition.Stable
-                    or ArmyComposition.Pay2Win
-                    or ArmyComposition.Test
-                    or ArmyComposition.Test2
-                    => AdjustedStoneCrusherTauntThresholds,
-                _ => StoneCrusherTauntThresholds,
-            };
+            return armyComposition == ArmyComposition.Stable
+                ? AdjustedStoneCrusherTauntThresholds
+                : StoneCrusherTauntThresholds;
 
         if (LoneWolf.IsArmyPlayer(3))
-            return armyComposition switch
-            {
-                ArmyComposition.Stable
-                    or ArmyComposition.Pay2Win
-                    or ArmyComposition.Test
-                    or ArmyComposition.Test2
-                    => AdjustedArchPaladinTauntThresholds,
-                _ => ArchPaladinTauntThresholds,
-            };
+            return armyComposition == ArmyComposition.Stable
+                ? AdjustedArchPaladinTauntThresholds
+                : ArchPaladinTauntThresholds;
 
         return Array.Empty<int>();
     }
@@ -820,12 +631,7 @@ public class UltraDrakath_LW
                 ArmyComposition.Optimized => LoneWolf.ChaosSlayer(),
                 ArmyComposition.Pay2Win => LoneWolf.Guardian(),
                 ArmyComposition.Pay2Win2 => LoneWolf.Guardian(),
-                ArmyComposition.Test => LoneWolf.ArcanaInvoker(),
-                ArmyComposition.Test2 => LoneWolf.ArcanaInvoker(),
-                ArmyComposition.Test3 => LoneWolf.Guardian(),
-                ArmyComposition.Test4 => LoneWolf.ArcanaInvoker(),
-                ArmyComposition.Test5 => LoneWolf.Guardian(),
-                ArmyComposition.Test6 => LoneWolf.Guardian(),
+                ArmyComposition.Pay2Win3 => LoneWolf.MartialArtist(),
                 _ => LoneWolf.LegionRevenant(),
             };
 
@@ -834,32 +640,16 @@ public class UltraDrakath_LW
             {
                 ArmyComposition.Pay2Win => LoneWolf.ArchPaladin(),
                 ArmyComposition.Pay2Win2 => LoneWolf.PaladinChronomancer(),
-                ArmyComposition.Test => LoneWolf.ArchPaladin(),
-                ArmyComposition.Test2 => LoneWolf.PaladinChronomancer(),
-                ArmyComposition.Test3 => LoneWolf.ArchPaladin(),
-                ArmyComposition.Test4 => LoneWolf.ArchPaladin(),
-                ArmyComposition.Test5 => LoneWolf.PaladinChronomancer(),
-                ArmyComposition.Test6 => LoneWolf.PaladinChronomancer(),
+                ArmyComposition.Pay2Win3 => LoneWolf.PaladinChronomancer(),
                 _ => LoneWolf.StoneCrusher(),
             };
 
         if (LoneWolf.IsArmyPlayer(3))
             return armyComposition == ArmyComposition.Pay2Win
                 || armyComposition == ArmyComposition.Pay2Win2
-                || armyComposition == ArmyComposition.Test
-                || armyComposition == ArmyComposition.Test2
-                || armyComposition == ArmyComposition.Test3
-                || armyComposition == ArmyComposition.Test4
-                || armyComposition == ArmyComposition.Test5
-                || armyComposition == ArmyComposition.Test6
+                || armyComposition == ArmyComposition.Pay2Win3
                 ? LoneWolf.LegionRevenant()
                 : LoneWolf.ArchPaladin();
-
-        if (
-            LoneWolf.IsArmyPlayer(4)
-            && armyComposition == ArmyComposition.Test4
-        )
-            return LoneWolf.StoneCrusher();
 
         return LoneWolf.LordOfOrder();
     }
