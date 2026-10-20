@@ -209,12 +209,10 @@ public class ArmyLegionTokens_LW
         if (!Core.HasSpaceFor(Bot.Bank.GetItem(LegionToken)))
             return Fatal("Legion Token cannot be moved from bank because the inventory is full.", "PrepareTokens");
 
-        int expectedQuantity = Math.Min(TokenCap, Bot.Inventory.GetQuantity(LegionToken) + bankQuantity);
         Bot.Bank.EnsureToInventory(LegionToken, loadBank: false);
-        Bot.Wait.ForTrue(() => Bot.Inventory.GetQuantity(LegionToken) >= expectedQuantity, 20);
         return !Bot.ShouldExit && (
-            Bot.Inventory.GetQuantity(LegionToken) >= expectedQuantity
-            || Fatal("The banked Legion Token stack could not be moved completely.", "PrepareTokens")
+            Bot.Inventory.Contains(LegionToken)
+            || Fatal("Legion Token could not be moved from bank.", "PrepareTokens")
         );
     }
 
