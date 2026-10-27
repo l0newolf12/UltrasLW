@@ -737,8 +737,14 @@ public class CoreLoneWolf
         new()
         {
             ClassName = "Scion of Flames",
-            Skills = new[] { 0, 3, 2, 1 },
-            SkillMode = SkillEngineMode.ScionOfFlames,
+            Skills = new[]
+            {
+                1, 0, 4, 3, 1, 2,
+                1, 1, 1, 0, 2, 3,
+                1, 4, 1, 2, 1, 1, 1,
+                0, 3, 1, 2, 1, 1, 1, 2, 1
+            },
+            SkillMode = SkillEngineMode.Strict,
             BaseEnhancement = EnhancementType.Wizard,
             CapeEnhancement = CapeSpecial.Vainglory,
             HelmEnhancement = HelmSpecial.Forge,
