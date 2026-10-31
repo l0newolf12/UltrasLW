@@ -56,6 +56,7 @@ public class ArmyPrismatasGoldFarm_LW
     private int armyPlayerCount;
     private int privateRoomNumber;
     private int bindingSellQuantity;
+    private bool keepElementalBinding;
     private bool farmGoldVouchers;
     private bool finishingBindings;
     private bool antiLagApplied;
@@ -111,13 +112,13 @@ public class ArmyPrismatasGoldFarm_LW
         new Option<int>(
             "BindingSellQuantity",
             "Binding Sell Quantity",
-            "Sell after every player reaches this many Elemental Bindings. Range: 1 through 2500.",
+            "Positive: sell after every player reaches this quantity.\nNegative: keep Bindings and stop at that quantity,\nignoring gold and vouchers.\n\nExamples: -100 keeps 100, -2500 keeps 2500.\nRange: -2500 through -1 or 1 through 2500.",
             100
         ),
         new Option<bool>(
             "FarmGoldVouchers",
             "Farm Gold Vouchers?",
-            "Max Gold Voucher 100k first, then Gold Voucher 500k, before finishing at 100 million gold and 2500 Elemental Bindings on every player.",
+            "Max Gold Voucher 100k first,\nthen Gold Voucher 500k,\nbefore finishing at 100 million gold\nand 2500 Elemental Bindings on every player.\n\nIgnored when Binding Sell Quantity is negative.",
             false
         ),
         new Option<bool>(
@@ -228,6 +229,13 @@ public class ArmyPrismatasGoldFarm_LW
             $"{LogPrefix} started as {playerAlias} using {armyComposition} composition."
         );
 
+        if (keepElementalBinding)
+        {
+            Core.Logger(
+                $"{LogPrefix} keeping all Elemental Binding until every active account has {bindingSellQuantity}. Gold and voucher goals are disabled."
+            );
+        }
+
         RegisterBindingDrop();
 
         if (!Prepare(preset) || !Sync("SETUP_DONE"))
@@ -267,17 +275,20 @@ public class ArmyPrismatasGoldFarm_LW
         armyComposition = Bot.Config!.Get<ArmyComposition>("ArmyComposition");
         privateRoomNumber = Bot.Config.Get<int>("PrivateRoomNumber");
         bindingSellQuantity = Bot.Config.Get<int>("BindingSellQuantity");
-        farmGoldVouchers = Bot.Config.Get<bool>("FarmGoldVouchers");
+        keepElementalBinding = bindingSellQuantity < 0;
+        farmGoldVouchers = !keepElementalBinding && Bot.Config.Get<bool>("FarmGoldVouchers");
 
-        if (bindingSellQuantity < 1 || bindingSellQuantity > BindingMaxStack)
+        if (bindingSellQuantity == 0 || bindingSellQuantity < -BindingMaxStack || bindingSellQuantity > BindingMaxStack)
         {
             Core.Logger(
-                $"Binding Sell Quantity must be from 1 through {BindingMaxStack}.",
+                $"Binding Sell Quantity must be from -{BindingMaxStack} through -1 or 1 through {BindingMaxStack}. Negative quantities keep Bindings.",
                 "ValidateOptions",
                 messageBox: true
             );
             return false;
         }
+
+        bindingSellQuantity = Math.Abs(bindingSellQuantity);
 
         string playerFive = Bot.Config.Get<string>("player5")?.Trim() ?? string.Empty;
         string playerSix = Bot.Config.Get<string>("player6")?.Trim() ?? string.Empty;
@@ -539,7 +550,7 @@ public class ArmyPrismatasGoldFarm_LW
         StopCombat();
         MoveToSafeRoom();
 
-        if (!IsLocalCurrencyGoalComplete())
+        if (!keepElementalBinding && !IsLocalCurrencyGoalComplete())
         {
             if (farmGoldVouchers && Bot.Player.Gold >= GoldCap)
             {
@@ -567,7 +578,7 @@ public class ArmyPrismatasGoldFarm_LW
         MoveToSafeRoom();
 
         string currencySignal = $"CYCLE_{farmCycle}_CURRENCY_COMPLETE";
-        if (IsLocalCurrencyGoalComplete() && !LoneWolf.SendArmySignal(currencySignal))
+        if (!keepElementalBinding && IsLocalCurrencyGoalComplete() && !LoneWolf.SendArmySignal(currencySignal))
             return false;
 
         bool localComplete = IsLocalGoalComplete();
@@ -582,7 +593,9 @@ public class ArmyPrismatasGoldFarm_LW
         if (armyComplete)
         {
             Core.Logger(
-                farmGoldVouchers
+                keepElementalBinding
+                    ? $"{LogPrefix} confirmed every active account has {bindingSellQuantity} Elemental Binding."
+                    : farmGoldVouchers
                     ? $"{LogPrefix} confirmed every active account has max gold, vouchers, and Elemental Binding."
                     : $"{LogPrefix} confirmed every active account completed the gold objective."
             );
@@ -627,6 +640,9 @@ public class ArmyPrismatasGoldFarm_LW
 
     private bool SellBindings(int farmCycle)
     {
+        if (keepElementalBinding)
+            return true;
+
         if (IsLocalCurrencyGoalComplete())
         {
             Core.Logger(
@@ -703,8 +719,10 @@ public class ArmyPrismatasGoldFarm_LW
         Bot.Inventory.GetQuantity(voucherName) + Bot.Bank.GetQuantity(voucherName);
 
     private bool IsLocalGoalComplete() =>
-        IsLocalCurrencyGoalComplete()
-        && (!farmGoldVouchers || ReachedBindingQuantity(BindingMaxStack));
+        keepElementalBinding
+            ? ReachedBindingQuantity(bindingSellQuantity)
+            : IsLocalCurrencyGoalComplete()
+                && (!farmGoldVouchers || ReachedBindingQuantity(BindingMaxStack));
 
     private bool IsLocalCurrencyGoalComplete()
     {

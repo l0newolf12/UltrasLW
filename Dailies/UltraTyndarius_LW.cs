@@ -24,6 +24,8 @@ public class UltraTyndarius_LW
         Fast,
         Pay2Win,
         Test,
+        Test2,
+        Test3,
     }
 
     private enum FightResult
@@ -80,7 +82,7 @@ public class UltraTyndarius_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / AP / LR / LOO\nPay2Win: Guardian / AP / LR / LOO\nTest: LR / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nFast: AI / AP / LR / LOO\nPay2Win: Guardian / AP / LR / LOO\nTest: LR / SC / AP / LOO\nTest2: Kathool Adept / SC / AP / LOO\nTest3: Kathool Adept / AP / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -395,7 +397,7 @@ public class UltraTyndarius_LW
     {
         int archPaladinPlayerNumber = GetArchPaladinPlayerNumber();
         int bossTauntPartnerPlayerNumber =
-            armyComposition == ArmyComposition.Pay2Win ? 3 : 4;
+            (armyComposition == ArmyComposition.Pay2Win || armyComposition == ArmyComposition.Test3) ? 3 : 4;
         if (LoneWolf.IsArmyPlayer(archPaladinPlayerNumber))
             return FightBossTaunter(
                 preset,
@@ -424,7 +426,7 @@ public class UltraTyndarius_LW
                 preset,
                 fightAttempt,
                 tauntLeftAdd:
-                    armyComposition == ArmyComposition.Pay2Win
+                    (armyComposition == ArmyComposition.Pay2Win || armyComposition == ArmyComposition.Test3)
                         ? LoneWolf.IsArmyPlayer(4)
                         : LoneWolf.IsArmyPlayer(3)
             );
@@ -920,6 +922,12 @@ public class UltraTyndarius_LW
 
     private ClassPreset GetClassPreset()
     {
+        if (
+            LoneWolf.IsArmyPlayer(1)
+            && armyComposition is ArmyComposition.Test2 or ArmyComposition.Test3
+        )
+            return LoneWolf.KathoolAdept();
+
         if (LoneWolf.IsArmyPlayer(1))
         {
             if (armyComposition == ArmyComposition.Pay2Win)
@@ -952,11 +960,12 @@ public class UltraTyndarius_LW
 
     private bool UsesDefaultFightRoles() =>
         armyComposition == ArmyComposition.Default
+        || armyComposition == ArmyComposition.Test2
         || armyComposition == ArmyComposition.Reliable;
 
     private bool UsesFastFightRoles() =>
         armyComposition
-            is ArmyComposition.Fast or ArmyComposition.Pay2Win;
+            is ArmyComposition.Fast or ArmyComposition.Pay2Win or ArmyComposition.Test3;
 
     private bool IsTaunterRole()
     {

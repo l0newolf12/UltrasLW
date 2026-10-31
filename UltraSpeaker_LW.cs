@@ -29,6 +29,7 @@ public class UltraSpeaker_LW
         Default = 0,
         Reliable = 1,
         Pay2Win = 2,
+        Test = 3,
     }
 
     private sealed class SpeakerStep
@@ -177,7 +178,7 @@ public class UltraSpeaker_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP",
+            "Default: LR / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: Kathool Adept / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -1174,7 +1175,9 @@ public class UltraSpeaker_LW
 
             ClassPreset preset = UsesReliableComposition()
                 ? LoneWolf.VerusDoomKnight()
-                : LoneWolf.LegionRevenant();
+                : armyComposition == ArmyComposition.Test
+                    ? LoneWolf.KathoolAdept()
+                    : LoneWolf.LegionRevenant();
             preset.CapeEnhancement = CapeSpecial.Penitence;
 
             if (!UsesReliableComposition())

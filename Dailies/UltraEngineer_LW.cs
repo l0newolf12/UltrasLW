@@ -21,6 +21,8 @@ public class UltraEngineer_LW
         Stable,
         Reliable,
         Pay2Win,
+        Test,
+        Test2,
     }
 
     private enum FightResult
@@ -69,7 +71,7 @@ public class UltraEngineer_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nTest: Kathool Adept / SC / AP / LOO\nTest2: Kathool Adept / AP / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -411,6 +413,22 @@ public class UltraEngineer_LW
 
     private ClassPreset GetClassPreset()
     {
+        if (
+            LoneWolf.IsArmyPlayer(1)
+            && armyComposition is ArmyComposition.Test or ArmyComposition.Test2
+        )
+            return LoneWolf.KathoolAdept();
+
+        if (armyComposition == ArmyComposition.Test2)
+        {
+            if (LoneWolf.IsArmyPlayer(2))
+                return LoneWolf.ArchPaladin();
+
+            return LoneWolf.IsArmyPlayer(3)
+                ? LoneWolf.LegionRevenant()
+                : LoneWolf.LordOfOrder();
+        }
+
         if (LoneWolf.IsArmyPlayer(1))
             return armyComposition switch
             {

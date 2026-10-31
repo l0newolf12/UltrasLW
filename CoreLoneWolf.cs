@@ -625,6 +625,21 @@ public class CoreLoneWolf
             CombatPotion = "Potent Honor Potion",
         };
 
+    public ClassPreset KathoolAdept() =>
+        new()
+        {
+            ClassName = "Kathool Adept",
+            Skills = new[] { 3, 1, 2, 3, 1, 3, 1, 3, 1, 2, 4 },
+            SkillMode = SkillEngineMode.Strict,
+            BaseEnhancement = EnhancementType.Wizard,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Pneuma,
+            WeaponEnhancement = WeaponSpecial.Valiance,
+            Tonic = "Sage Tonic",
+            Elixir = "Potent Malevolence Elixir",
+            CombatPotion = "Potent Honor Potion",
+        };
+
     public ClassPreset Bard() =>
         new()
         {

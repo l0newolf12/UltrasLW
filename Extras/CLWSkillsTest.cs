@@ -50,6 +50,7 @@ public class CLWSkillsTest
         Interstellar_Knight,
         Martial_Artist,
         Chaos_Shaper,
+        Kathool_Adept,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -307,6 +308,7 @@ public class CLWSkillsTest
             SkillPresetChoice.Interstellar_Knight => LoneWolf.InterstellarKnight(),
             SkillPresetChoice.Martial_Artist => LoneWolf.MartialArtist(),
             SkillPresetChoice.Chaos_Shaper => LoneWolf.ChaosShaper(),
+            SkillPresetChoice.Kathool_Adept => LoneWolf.KathoolAdept(),
             _ => LoneWolf.LegionRevenant(),
         };
 }

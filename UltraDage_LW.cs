@@ -22,6 +22,7 @@ public class UltraDage_LW
         Stable,
         Reliable,
         Pay2Win,
+        Test,
     }
 
     private enum FightResult
@@ -83,7 +84,7 @@ public class UltraDage_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: CSS / AP / VDK / AF",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: CSS / AP / VDK / AF\nTest: Kathool Adept / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -433,7 +434,7 @@ public class UltraDage_LW
             return false;
 
         if (
-            armyComposition == ArmyComposition.Default
+            (armyComposition == ArmyComposition.Default || armyComposition == ArmyComposition.Test)
             && !LoneWolf.IsArmyPlayer(4)
         )
             mystifyMode = LoneWolf.HasArmySignal(
@@ -448,7 +449,7 @@ public class UltraDage_LW
     {
         bool detectsDecay = IsPrimaryDecayHolder()
             || (
-                armyComposition == ArmyComposition.Default
+                (armyComposition == ArmyComposition.Default || armyComposition == ArmyComposition.Test)
                 && LoneWolf.IsArmyPlayer(4)
                 && !mystifyMode
             )
@@ -762,7 +763,7 @@ public class UltraDage_LW
                     || cycle % 2 != 0
                 )
                 || LoneWolf.IsArmyPlayer(4)
-                    && armyComposition == ArmyComposition.Default
+                    && (armyComposition == ArmyComposition.Default || armyComposition == ArmyComposition.Test)
                     && !mystifyMode
                     && cycle % 2 == 0
                 || LoneWolf.IsArmyPlayer(4)
@@ -1097,7 +1098,9 @@ public class UltraDage_LW
 
         if (LoneWolf.IsArmyPlayer(1))
         {
-            if (armyComposition == ArmyComposition.Stable)
+            if (armyComposition == ArmyComposition.Test)
+                preset = LoneWolf.KathoolAdept();
+            else if (armyComposition == ArmyComposition.Stable)
                 preset = LoneWolf.KingsEcho();
             else if (armyComposition == ArmyComposition.Reliable)
                 preset = LoneWolf.VerusDoomKnight();

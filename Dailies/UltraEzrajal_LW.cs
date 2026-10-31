@@ -24,6 +24,7 @@ public class UltraEzrajal_LW
         Stable,
         Reliable,
         Pay2Win,
+        Test,
     }
 
     private enum FightResult
@@ -79,7 +80,7 @@ public class UltraEzrajal_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nTest: Kathool Adept / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -749,6 +750,12 @@ public class UltraEzrajal_LW
 
     private ClassPreset GetClassPreset()
     {
+        if (
+            LoneWolf.IsArmyPlayer(1)
+            && armyComposition is ArmyComposition.Test
+        )
+            return LoneWolf.KathoolAdept();
+
         if (LoneWolf.IsArmyPlayer(1))
         {
             if (armyComposition == ArmyComposition.Stable)
