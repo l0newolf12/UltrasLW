@@ -5731,7 +5731,118 @@ public class CoreLoneWolf
             ? StartLeaderArmySession()
             : JoinFollowerArmySession();
         armySessionStarted = started;
-        return started;
+        return started && ValidateEquippedHouseRequirement();
+    }
+
+    private bool ValidateEquippedHouseRequirement()
+    {
+        InventoryItem[]? houseItems = null;
+        bool requestedHouseInventory = false;
+        try
+        {
+            Bot.Wait.ForTrue(
+                () =>
+                {
+                    if (!Bot.Player.Loaded)
+                        return false;
+
+                    houseItems = Bot.Flash.GetGameObject<InventoryItem[]>(
+                        "world.myAvatar.houseitems"
+                    );
+                    if (houseItems != null)
+                        return true;
+
+                    if (!requestedHouseInventory)
+                    {
+                        requestedHouseInventory = true;
+                        Bot.Flash.CallGameFunction("world.loadHouseInventory");
+                    }
+
+                    return false;
+                },
+                40
+            );
+        }
+        catch
+        {
+            houseItems = null;
+        }
+
+        if (Bot.ShouldExit)
+            return false;
+
+        string? failureSignal = houseItems == null
+            ? "HOUSE_REQUIREMENT_UNAVAILABLE"
+            : houseItems.Any(item =>
+                item != null && item.Category == ItemCategory.House && item.Equipped
+            )
+                ? null
+                : "HOUSE_REQUIREMENT_INVALID";
+
+        if (failureSignal != null && !SendArmySignal(failureSignal))
+            return false;
+
+        if (!SyncArmy("HOUSE_REQUIREMENTS"))
+            return false;
+
+        string[] lines = ReadArmyLines();
+        if (Bot.ShouldExit || armyTransportFailed || !CanContinueArmySync(lines))
+            return false;
+
+        string[][] reports = lines.Select(line => line.Split('|')).Where(parts =>
+            parts.Length == 5
+            && parts[0] == "SIGNAL"
+            && parts[1] == ArmyProtocolVersion
+            && string.Equals(parts[2], armySessionId, StringComparison.Ordinal)
+        ).ToArray();
+
+        List<string> playersMissingHouse = new();
+        List<string> playersUnavailable = new();
+        for (int index = 0; index < armyPlayers.Length; index++)
+        {
+            foreach (string[] report in reports)
+            {
+                if (!string.Equals(
+                    NormalizeArmyUsername(report[4]),
+                    armyPlayers[index],
+                    StringComparison.OrdinalIgnoreCase
+                ))
+                    continue;
+
+                if (report[3] == "HOUSE_REQUIREMENT_INVALID")
+                {
+                    playersMissingHouse.Add($"Player {index + 1}");
+                    break;
+                }
+
+                if (report[3] == "HOUSE_REQUIREMENT_UNAVAILABLE")
+                {
+                    playersUnavailable.Add($"Player {index + 1}");
+                    break;
+                }
+            }
+        }
+
+        List<string> failures = new();
+        if (playersMissingHouse.Count > 0)
+            failures.Add(
+                $"Every player must own and equip a house before starting. Players missing an equipped house: {string.Join(", ", playersMissingHouse)}. Buy or equip a house and restart the script."
+            );
+        if (playersUnavailable.Count > 0)
+            failures.Add(
+                $"House requirement could not be verified for: {string.Join(", ", playersUnavailable)}. Wait for the account to finish loading and restart the script."
+            );
+
+        if (failures.Count == 0)
+            return !Bot.ShouldExit;
+
+        Core.Logger(
+            string.Join(" ", failures),
+            "ValidateEquippedHouseRequirement",
+            messageBox: true,
+            stopBot: true
+        );
+        return false;
     }
 
     public bool SyncArmy(string step)
