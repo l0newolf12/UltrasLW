@@ -62,7 +62,7 @@ public class CoreTempleShrine
 
         disabledOptionalDailyQuests.Add(questId);
         Core.Logger(
-            $"Optional daily quest {questId} could not be accepted. Direct dungeon farming will continue.",
+            (LoneWolf?.ExplainFailure($"Optional daily quest {questId} could not be accepted. Direct dungeon farming will continue.") ?? $"Optional daily quest {questId} could not be accepted. Direct dungeon farming will continue."),
             "CoreTempleShrine"
         );
     }
@@ -88,7 +88,7 @@ public class CoreTempleShrine
 
         disabledOptionalDailyQuests.Add(questId);
         Core.Logger(
-            $"Optional daily quest {questId} could not be completed. Direct dungeon farming will continue.",
+            (LoneWolf?.ExplainFailure($"Optional daily quest {questId} could not be completed. Direct dungeon farming will continue.") ?? $"Optional daily quest {questId} could not be completed. Direct dungeon farming will continue."),
             "CoreTempleShrine"
         );
     }
@@ -306,7 +306,7 @@ public class CoreTempleShrine
             Bot.Wait.ForTrue(() => Bot.Inventory.Contains(oracleName), 14);
 
             if (!Bot.Inventory.Contains(oracleName))
-                return Failure("Oracle could not be moved from bank.");
+                return Failure(ActiveLoneWolf.ExplainFailure("Oracle could not be moved from bank."));
 
             Core.Logger("Oracle moved from bank.", "CoreTempleShrine");
             return true;
@@ -321,7 +321,7 @@ public class CoreTempleShrine
 
         Core.BuyItem("classhalla", 759, oracleName);
         if (!Bot.Inventory.Contains(oracleName))
-            return Failure("Oracle could not be purchased.");
+            return Failure(ActiveLoneWolf.ExplainFailure("Oracle could not be purchased."));
 
         Core.Logger("Oracle purchased.", "CoreTempleShrine");
         return true;
@@ -332,15 +332,7 @@ public class CoreTempleShrine
         if (LoneWolf == null)
             return Failure("CoreTempleShrine requires the active CoreLoneWolf instance.");
 
-        Bot.Send.Packet($"%xt%zm%house%1%{Bot.Player.Username}%");
-
-        while (
-            !Bot.ShouldExit
-            && !string.Equals(Bot.Map.Name, "house", StringComparison.OrdinalIgnoreCase)
-        )
-            Bot.Sleep(PartyPollDelay);
-
-        if (Bot.ShouldExit)
+        if (!ActiveLoneWolf.MoveToHouse("CoreTempleShrine"))
             return false;
 
         Bot.Sleep(1_000);
@@ -355,7 +347,7 @@ public class CoreTempleShrine
                 StringComparison.OrdinalIgnoreCase
             )
         )
-            return Failure("Oracle could not be equipped.");
+            return Failure(ActiveLoneWolf.ExplainFailure("Oracle could not be equipped.", includeCombat: true));
 
         Bot.Sleep(1_000);
         return !Bot.ShouldExit;
@@ -377,7 +369,7 @@ public class CoreTempleShrine
 
         if (!IsExactParty())
             return Failure(
-                "Exact four-player party was not formed within 30 seconds."
+                ActiveLoneWolf.ExplainFailure("Exact four-player party was not formed within 30 seconds.")
             );
 
         Core.Logger("Exact four-player party confirmed.", "CoreTempleShrine");

@@ -212,7 +212,7 @@ public class ArmyLegionTokens_LW
         Bot.Bank.EnsureToInventory(LegionToken, loadBank: false);
         return !Bot.ShouldExit && (
             Bot.Inventory.Contains(LegionToken)
-            || Fatal("Legion Token could not be moved from bank.", "PrepareTokens")
+            || Fatal(LoneWolf.ExplainFailure("Legion Token could not be moved from bank."), "PrepareTokens")
         );
     }
 
@@ -317,7 +317,7 @@ public class ArmyLegionTokens_LW
         if (Bot.ShouldExit)
             return false;
         if (!string.Equals(currentFullMapName, fullMapName, StringComparison.OrdinalIgnoreCase))
-            return Fatal("The configured private legionarena room could not be reached.", "JoinFarmRoom");
+            return Fatal(LoneWolf.ExplainFailure("The configured private legionarena room could not be reached.", includeCombat: true), "JoinFarmRoom");
 
         if (
             !string.Equals(Bot.Player.Cell, FightCell, StringComparison.OrdinalIgnoreCase)
@@ -330,7 +330,7 @@ public class ArmyLegionTokens_LW
                 string.Equals(Bot.Player.Cell, FightCell, StringComparison.OrdinalIgnoreCase)
                 && string.Equals(Bot.Player.Pad, FightPad, StringComparison.OrdinalIgnoreCase)
             )
-            || Fatal("The Legion Fiend Rider fight cell could not be reached.", "JoinFarmRoom")
+            || Fatal(LoneWolf.ExplainFailure("The Legion Fiend Rider fight cell could not be reached.", includeCombat: true), "JoinFarmRoom")
         );
     }
 
@@ -541,16 +541,7 @@ public class ArmyLegionTokens_LW
 
     private bool MoveToHouse()
     {
-        if (Bot.ShouldExit)
-            return false;
-
-        Bot.Send.Packet($"%xt%zm%house%1%{Bot.Player.Username}%");
-        Bot.Wait.ForMapLoad("house");
-        if (Bot.ShouldExit)
-            return false;
-
-        return string.Equals(Bot.Map.Name, "house", StringComparison.OrdinalIgnoreCase)
-            || Fatal($"{LogPrefix} {playerAlias} could not reach their house.", "MoveToHouse");
+        return LoneWolf.MoveToHouse(LogPrefix);
     }
 
     private bool Fatal(string message, string caller)

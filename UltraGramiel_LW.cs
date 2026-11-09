@@ -22,8 +22,7 @@ public class UltraGramiel_LW
         Optimized = 1,
         Reliable = 2,
         Pay2Win = 3,
-        Test = 4,
-        Test2 = 5,
+        Abyssal = 6,
     }
 
     private enum PhaseResult
@@ -101,7 +100,7 @@ public class UltraGramiel_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO\nTest: Kathool Adept / SC / AP / LOO\nTest2: Kathool Adept / AP / LR / LOO",
+            "Default: LR / SC / AP / LOO\nOptimized: Shaman / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO\nAbyssal: Kathool Adept / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -801,9 +800,6 @@ public class UltraGramiel_LW
 
     private int[] GetHealingHoldSkills()
     {
-        if (armyComposition == ArmyComposition.Test2)
-            return LoneWolf.IsArmyPlayer(3) ? new[] { 3 } : new[] { 2 };
-
         if (UsesPay2WinCompositionBehavior())
         {
             if (LoneWolf.IsArmyPlayer(1))
@@ -1196,16 +1192,18 @@ public class UltraGramiel_LW
         Bot.Player.Cell == FightCell && Bot.Player.Pad == FightPad;
 
     private bool UsesDefaultCompositionBehavior() =>
-        armyComposition is ArmyComposition.Default or ArmyComposition.Test or ArmyComposition.Test2;
+        armyComposition is ArmyComposition.Default or ArmyComposition.Abyssal;
 
     private ClassPreset GetClassPreset()
     {
         if (LoneWolf.IsArmyPlayer(1))
         {
-            if (armyComposition is ArmyComposition.Test or ArmyComposition.Test2)
+            if (armyComposition == ArmyComposition.Abyssal)
             {
-                ClassPreset kathool = LoneWolf.KathoolAdept();
-                kathool.CapeEnhancement = CapeSpecial.Penitence;
+                ClassPreset kathool = LoneWolf.KathoolAdept(optimizedMode: true);
+                kathool.WeaponEnhancement = WeaponSpecial.Elysium;
+                kathool.HelmEnhancement = HelmSpecial.Forge;
+                kathool.CapeEnhancement = CapeSpecial.Absolution;
                 return kathool;
             }
 
@@ -1235,21 +1233,12 @@ public class UltraGramiel_LW
 
         if (LoneWolf.IsArmyPlayer(2))
         {
-            if (armyComposition == ArmyComposition.Test2)
-            {
-                ClassPreset archPaladin = LoneWolf.ArchPaladin();
-                archPaladin.CapeEnhancement = CapeSpecial.Penitence;
-                return archPaladin;
-            }
-
             return LoneWolf.StoneCrusher();
         }
 
         if (LoneWolf.IsArmyPlayer(3))
         {
-            ClassPreset preset = armyComposition == ArmyComposition.Test2
-                ? LoneWolf.LegionRevenant()
-                : LoneWolf.ArchPaladin();
+            ClassPreset preset = LoneWolf.ArchPaladin();
             preset.CapeEnhancement = CapeSpecial.Penitence;
             return preset;
         }
@@ -1275,7 +1264,7 @@ public class UltraGramiel_LW
     private bool SuppressPlayerOneDuringHealingHold() =>
         IsOptimizedShaman() || IsReliableVerusDoomKnight()
         || (
-            armyComposition is ArmyComposition.Test or ArmyComposition.Test2
+            armyComposition is ArmyComposition.Abyssal
             && LoneWolf.IsArmyPlayer(1)
         );
 

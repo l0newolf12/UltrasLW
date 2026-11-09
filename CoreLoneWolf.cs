@@ -625,12 +625,16 @@ public class CoreLoneWolf
             CombatPotion = "Potent Honor Potion",
         };
 
-    public ClassPreset KathoolAdept() =>
+    public ClassPreset KathoolAdept(bool optimizedMode = false) =>
         new()
         {
             ClassName = "Kathool Adept",
-            Skills = new[] { 3, 1, 2, 3, 1, 3, 1, 3, 1, 2, 4 },
-            SkillMode = SkillEngineMode.Strict,
+            Skills = optimizedMode
+                ? new[] { 3, 3, 1, 2, 4 }
+                : new[] { 3, 1, 2, 3, 1, 3, 1, 3, 1, 2, 4 },
+            SkillMode = optimizedMode
+                ? SkillEngineMode.KathoolAdeptOptimized
+                : SkillEngineMode.Strict,
             BaseEnhancement = EnhancementType.Wizard,
             CapeEnhancement = CapeSpecial.Vainglory,
             HelmEnhancement = HelmSpecial.Pneuma,
@@ -638,6 +642,21 @@ public class CoreLoneWolf
             Tonic = "Sage Tonic",
             Elixir = "Potent Malevolence Elixir",
             CombatPotion = "Potent Honor Potion",
+        };
+
+    public ClassPreset Lich() =>
+        new()
+        {
+            ClassName = "Lich",
+            Skills = new[] { 4, 3, 4, 2, 4, 1, 3, 2, 4, 1 },
+            SkillMode = SkillEngineMode.Strict,
+            BaseEnhancement = EnhancementType.Lucky,
+            CapeEnhancement = CapeSpecial.Vainglory,
+            HelmEnhancement = HelmSpecial.Forge,
+            WeaponEnhancement = WeaponSpecial.Ravenous,
+            Tonic = "Fate Tonic",
+            Elixir = "Potent Malevolence Elixir",
+            CombatPotion = "Felicitous Philtre",
         };
 
     public ClassPreset Bard() =>
@@ -864,6 +883,104 @@ public class CoreLoneWolf
             CombatPotion = "Felicitous Philtre",
         };
 
+    public string ExplainFailure(string message, bool includeCombat = false)
+    {
+        if (Bot.ShouldExit)
+            return message;
+
+        try
+        {
+            string? detail = Bot.Player.Kicked ? "Kicked from the server."
+                : !Bot.Player.LoggedIn ? "Disconnected."
+                : !Bot.Player.Alive ? "The player is dead."
+                : Bot.Map.Loading ? "The map is still loading."
+                : !Bot.Map.Loaded ? "The map is not fully loaded."
+                : !Bot.Player.Loaded ? "Player data is not loaded."
+                : includeCombat && Bot.Player.InCombat ? "Still in combat."
+                : null;
+            return detail == null ? message : $"{message} {detail}";
+        }
+        catch
+        {
+            return message;
+        }
+    }
+
+    public bool MoveToHouse(string logPrefix = "CoreLoneWolf")
+    {
+        if (Bot.ShouldExit)
+            return false;
+
+        string playerAlias = LogArmyName(Bot.Player.Username);
+        string? failure = Bot.Player.Kicked
+            ? $"{playerAlias} cannot move to the house because the account was kicked."
+            : !Bot.Player.LoggedIn
+                ? $"{playerAlias} cannot move to the house because the account is disconnected."
+                : null;
+
+        if (failure == null)
+        {
+            long startedAt = Environment.TickCount64;
+            Bot.Send.Packet($"%xt%zm%house%1%{Bot.Player.Username}%");
+            while (!Bot.ShouldExit)
+            {
+                if (Bot.Player.Kicked)
+                {
+                    failure = $"{playerAlias} was kicked while waiting for the house.";
+                    break;
+                }
+                if (!Bot.Player.LoggedIn)
+                {
+                    failure = $"{playerAlias} disconnected while waiting for the house.";
+                    break;
+                }
+                if (string.Equals(Bot.Map.Name, "house", StringComparison.OrdinalIgnoreCase)
+                    && Bot.Map.Loaded)
+                {
+                    if (Bot.ShouldExit)
+                        return false;
+                    Core.Logger($"{playerAlias} reached the loaded house map after {Environment.TickCount64 - startedAt} ms.", logPrefix);
+                    return true;
+                }
+                if (Environment.TickCount64 - startedAt >= 10_000)
+                    break;
+                Bot.Sleep(100);
+            }
+        }
+
+        if (Bot.ShouldExit)
+            return false;
+
+        if (failure == null)
+        {
+            string mapName = Bot.Map.Name;
+            failure = string.Equals(mapName, "buyhouse", StringComparison.OrdinalIgnoreCase)
+                ? $"{playerAlias} reached buyhouse instead of house."
+                : string.Equals(mapName, "house", StringComparison.OrdinalIgnoreCase)
+                    ? $"{playerAlias} reached the house map, but loading did not finish within 10 seconds."
+                    : $"{playerAlias} did not reach the house within 10 seconds.";
+
+            if (!string.Equals(mapName, "buyhouse", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(mapName, "house", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    if (!Bot.Player.Alive)
+                        failure += " The player is dead.";
+                    else if (Bot.Player.InCombat)
+                        failure += " Still in combat.";
+                }
+                catch
+                {
+                    // A diagnostic read must not replace the arrival failure.
+                }
+            }
+        }
+
+        Core.Logger(failure, logPrefix, messageBox: true, stopBot: true);
+        return false;
+    }
+
     public void EquipClass(ClassPreset preset)
     {
         if (Bot.ShouldExit)
@@ -940,7 +1057,7 @@ public class CoreLoneWolf
             if (!Bot.Inventory.Contains(className))
             {
                 Core.Logger(
-                    $"{className} could not be moved from bank.",
+                    ExplainFailure($"{className} could not be moved from bank."),
                     "EquipClass",
                     messageBox: true,
                     stopBot: true
@@ -973,7 +1090,7 @@ public class CoreLoneWolf
         }
 
         Core.Logger(
-            $"{className} could not be equipped.",
+            ExplainFailure($"{className} could not be equipped.", includeCombat: true),
             "EquipClass",
             messageBox: true,
             stopBot: true
@@ -1787,6 +1904,7 @@ public class CoreLoneWolf
                             or SkillEngineMode.ScionOfFlames
                             or SkillEngineMode.GreatThief
                             or SkillEngineMode.ChaosShaper
+                            or SkillEngineMode.KathoolAdeptOptimized
                     )
                         skillIndex = 0;
 
@@ -2060,6 +2178,8 @@ public class CoreLoneWolf
                             MartialArtistSkillEngine();
                         else if (skillEngineMode == SkillEngineMode.ChaosShaper)
                             ChaosShaperSkillEngine();
+                        else if (skillEngineMode == SkillEngineMode.KathoolAdeptOptimized)
+                            KathoolAdeptOptimizedSkillEngine();
                         else if (
                             skillEngineMode == SkillEngineMode.Simple
                             && blockedSimpleSkill is >= 1 and <= 4
@@ -2312,6 +2432,38 @@ public class CoreLoneWolf
 
             Bot.Skills.UseSkill(skill);
             skillIndex = (index + 1) % skillList.Length;
+            return;
+        }
+    }
+
+    private void KathoolAdeptOptimizedSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+            return;
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        int[] skills = GetSkillList();
+
+        if (skills.Length == 0)
+            return;
+
+        int feedingStacks = Bot.Self.GetAuraStacks("Feeding");
+
+        for (int offset = 0; offset < skills.Length; offset++)
+        {
+            int index = (skillIndex + offset) % skills.Length;
+            int skill = skills[index];
+
+            if ((index == 0 && feedingStacks > 0) || (index == 1 && feedingStacks < 10))
+                continue;
+
+            if (!Bot.Skills.CanUseSkill(skill))
+                continue;
+
+            Bot.Skills.UseSkill(skill);
+            skillIndex = (index + 1) % skills.Length;
             return;
         }
     }
@@ -3086,7 +3238,7 @@ public class CoreLoneWolf
                     );
                 else
                     Core.Logger(
-                        $"{unstableDivineElixir} could not be moved from bank.",
+                        ExplainFailure($"{unstableDivineElixir} could not be moved from bank."),
                         "GetDivineElixir"
                     );
             }
@@ -3246,7 +3398,7 @@ public class CoreLoneWolf
             if (!Bot.Inventory.IsEquipped(scrollName))
             {
                 Core.Logger(
-                    $"{scrollName} could not be equipped.",
+                    ExplainFailure($"{scrollName} could not be equipped.", includeCombat: true),
                     "EquipScroll",
                     messageBox: required,
                     stopBot: required
@@ -3261,7 +3413,7 @@ public class CoreLoneWolf
         {
             Bot.Log($"CoreLoneWolf scroll equip failed for {scrollName}: {ex}");
             Core.Logger(
-                $"{scrollName} could not be equipped.",
+                ExplainFailure($"{scrollName} could not be equipped.", includeCombat: true),
                 "EquipScroll",
                 messageBox: required,
                 stopBot: required
@@ -3294,7 +3446,7 @@ public class CoreLoneWolf
             if (Bot.Bank.Contains(itemName))
             {
                 if (!MoveBankItemToInventory(itemName))
-                    Core.Logger($"{itemName} could not be moved from bank.", "PreparePotions");
+                    Core.Logger(ExplainFailure($"{itemName} could not be moved from bank."), "PreparePotions");
                 else
                     Core.Logger($"{itemName} moved from bank.", "PreparePotions");
                 return;
@@ -3334,7 +3486,7 @@ public class CoreLoneWolf
             if (Bot.Bank.Contains(voucherName) && !MoveBankItemToInventory(voucherName))
             {
                 Core.Logger(
-                    $"{itemName} skipped because {voucherName} could not be moved from bank.",
+                    ExplainFailure($"{itemName} skipped because {voucherName} could not be moved from bank."),
                     "PreparePotions"
                 );
                 return;
@@ -3376,7 +3528,7 @@ public class CoreLoneWolf
                 if (Bot.Inventory.GetQuantity(voucherName) < voucherQuantity)
                 {
                     Core.Logger(
-                        $"{itemName} skipped because the required vouchers could not be obtained.",
+                        ExplainFailure($"{itemName} skipped because the required vouchers could not be obtained."),
                         "PreparePotions"
                     );
                     return;
@@ -3401,7 +3553,7 @@ public class CoreLoneWolf
 
             if (!Bot.Inventory.Contains(itemName))
             {
-                Core.Logger($"{itemName} could not be purchased.", "PreparePotions");
+                Core.Logger(ExplainFailure($"{itemName} could not be purchased."), "PreparePotions");
                 return;
             }
 
@@ -3410,7 +3562,7 @@ public class CoreLoneWolf
         catch (Exception ex)
         {
             Bot.Log($"CoreLoneWolf potion preparation failed for {itemName}: {ex}");
-            Core.Logger($"{itemName} preparation failed.", "PreparePotions");
+            Core.Logger(ExplainFailure($"{itemName} preparation failed."), "PreparePotions");
         }
     }
 
@@ -3468,7 +3620,7 @@ public class CoreLoneWolf
             if (!Bot.Self.HasActiveAura(auraName))
             {
                 Core.Logger(
-                    $"{itemName} was not verified after use.",
+                    ExplainFailure($"{itemName} was not verified after use.", includeCombat: true),
                     "UsePotions"
                 );
                 return;
@@ -3480,7 +3632,7 @@ public class CoreLoneWolf
         catch (Exception ex)
         {
             Bot.Log($"CoreLoneWolf potion use failed for {itemName}: {ex}");
-            Core.Logger($"{itemName} use failed.", "UsePotions");
+            Core.Logger(ExplainFailure($"{itemName} use failed.", includeCombat: true), "UsePotions");
         }
     }
 
@@ -3495,7 +3647,7 @@ public class CoreLoneWolf
         if (Bot.Inventory.IsEquipped(itemName))
             return true;
 
-        Core.Logger($"{itemName} could not be equipped.", "UsePotions");
+        Core.Logger(ExplainFailure($"{itemName} could not be equipped.", includeCombat: true), "UsePotions");
         return false;
     }
 
@@ -3741,7 +3893,7 @@ public class CoreLoneWolf
         catch (Exception ex)
         {
             Bot.Log($"CoreLoneWolf scroll preparation failed for {scrollName}: {ex}");
-            ScrollPreparationFailed(scrollName, "an unexpected error occurred");
+            ScrollPreparationFailed(scrollName, ExplainFailure("an unexpected error occurred.").TrimEnd('.'));
         }
     }
 
@@ -3820,7 +3972,7 @@ public class CoreLoneWolf
                 if (Bot.Inventory.GetQuantity(parchment) < 2)
                     return ScrollPreparationFailed(
                         EnrageScroll,
-                        $"2 {parchment} could not be obtained"
+                        ExplainFailure($"2 {parchment} could not be obtained.").TrimEnd('.')
                     );
             }
 
@@ -3837,7 +3989,7 @@ public class CoreLoneWolf
             if (Bot.Inventory.GetQuantity(ink) < 5)
                 return ScrollPreparationFailed(
                     EnrageScroll,
-                    $"{ink} could not be crafted"
+                    ExplainFailure($"{ink} could not be crafted.").TrimEnd('.')
                 );
         }
 
@@ -3879,7 +4031,7 @@ public class CoreLoneWolf
         if (Bot.Inventory.GetQuantity(itemName) < quantity)
             return ScrollPreparationFailed(
                 EnrageScroll,
-                $"{itemName} could not be obtained"
+                ExplainFailure($"{itemName} could not be obtained.").TrimEnd('.')
             );
 
         return true;
@@ -3911,7 +4063,7 @@ public class CoreLoneWolf
         if (!PrepareScrollQuestTurnIn(EnrageQuestId))
             return ScrollPreparationFailed(
                 EnrageScroll,
-                $"quest {EnrageQuestId} could not be prepared for completion"
+                ExplainFailure($"quest {EnrageQuestId} could not be prepared for completion.").TrimEnd('.')
             );
 
         int completed = Core.EnsureCompleteMulti(EnrageQuestId, amount);
@@ -3948,7 +4100,7 @@ public class CoreLoneWolf
                 if (!PrepareScrollQuestTurnIn(EnrageQuestId))
                     return ScrollPreparationFailed(
                         EnrageScroll,
-                        $"quest {EnrageQuestId} could not be prepared for the normal completion fallback"
+                        ExplainFailure($"quest {EnrageQuestId} could not be prepared for the normal completion fallback.").TrimEnd('.')
                     );
 
                 bool fallbackCompleted = Core.EnsureComplete(EnrageQuestId);
@@ -3970,7 +4122,7 @@ public class CoreLoneWolf
             if (!PrepareScrollQuestTurnIn(EnrageQuestId))
                 return ScrollPreparationFailed(
                     EnrageScroll,
-                    $"quest {EnrageQuestId} could not be prepared for the final completion fallback"
+                    ExplainFailure($"quest {EnrageQuestId} could not be prepared for the final completion fallback.").TrimEnd('.')
                 );
 
             int finalCompleted = Core.EnsureCompleteMulti(EnrageQuestId, remainingTurnIns);
@@ -3981,14 +4133,14 @@ public class CoreLoneWolf
             else
                 return ScrollPreparationFailed(
                     EnrageScroll,
-                    $"all bounded completion attempts failed; {ConfirmedTurnIns()} of {amount} requested turn-ins were confirmed"
+                    ExplainFailure($"all bounded completion attempts failed; {ConfirmedTurnIns()} of {amount} requested turn-ins were confirmed.").TrimEnd('.')
                 );
         }
 
         if (completed < amount)
             return ScrollPreparationFailed(
                 EnrageScroll,
-                $"the quest completed {completed} of {amount} requested turn-ins"
+                ExplainFailure($"the quest completed {completed} of {amount} requested turn-ins.").TrimEnd('.')
             );
 
         if (previousQuantity == 0)
@@ -4009,7 +4161,7 @@ public class CoreLoneWolf
         if (Bot.Inventory.GetQuantity(EnrageScroll) < expectedQuantity)
             return ScrollPreparationFailed(
                 EnrageScroll,
-                $"the quest produced fewer than {expectedQuantity} total scrolls"
+                ExplainFailure($"the quest produced fewer than {expectedQuantity} total scrolls.").TrimEnd('.')
             );
 
         return true;
@@ -4098,7 +4250,7 @@ public class CoreLoneWolf
                 )
             )
             {
-                ScrollPreparationFailed(scrollName, $"{SpellcraftMap} could not be joined");
+                ScrollPreparationFailed(scrollName, ExplainFailure($"{SpellcraftMap} could not be joined.", includeCombat: true).TrimEnd('.'));
                 return;
             }
 
@@ -4122,7 +4274,7 @@ public class CoreLoneWolf
             {
                 ScrollPreparationFailed(
                     scrollName,
-                    $"quest {questId} did not provide valid recipe data"
+                    ExplainFailure($"quest {questId} did not provide valid recipe data.").TrimEnd('.')
                 );
                 return;
             }
@@ -4164,7 +4316,7 @@ public class CoreLoneWolf
         catch (Exception ex)
         {
             Bot.Log($"CoreLoneWolf scroll preparation failed for {scrollName}: {ex}");
-            ScrollPreparationFailed(scrollName, "an unexpected error occurred");
+            ScrollPreparationFailed(scrollName, ExplainFailure("an unexpected error occurred.").TrimEnd('.'));
         }
     }
 
@@ -4252,7 +4404,7 @@ public class CoreLoneWolf
                 if (Bot.Inventory.GetQuantity(parchment) < 2)
                     return ScrollPreparationFailed(
                         scrollName,
-                        $"2 {parchment} could not be obtained"
+                        ExplainFailure($"2 {parchment} could not be obtained.").TrimEnd('.')
                     );
             }
 
@@ -4267,7 +4419,7 @@ public class CoreLoneWolf
             )
                 return ScrollPreparationFailed(
                     scrollName,
-                    $"{SpellcraftMap} could not be joined"
+                    ExplainFailure($"{SpellcraftMap} could not be joined.", includeCombat: true).TrimEnd('.')
                 );
 
             if (!EnsureScrollPurchaseSpace(scrollName, requirement.Name, SpellInkShopId, 5))
@@ -4281,7 +4433,7 @@ public class CoreLoneWolf
             if (Bot.Inventory.GetQuantity(requirement.Name) < requiredInk)
                 return ScrollPreparationFailed(
                     scrollName,
-                    $"{requirement.Name} could not be crafted"
+                    ExplainFailure($"{requirement.Name} could not be crafted.").TrimEnd('.')
                 );
         }
 
@@ -4331,7 +4483,7 @@ public class CoreLoneWolf
         if (Bot.Inventory.GetQuantity(itemName) < quantity)
             return ScrollPreparationFailed(
                 scrollName,
-                $"{itemName} could not be obtained"
+                ExplainFailure($"{itemName} could not be obtained.").TrimEnd('.')
             );
 
         return true;
@@ -4360,7 +4512,7 @@ public class CoreLoneWolf
         )
             return ScrollPreparationFailed(
                 scrollName,
-                $"{SpellcraftMap} could not be joined"
+                ExplainFailure($"{SpellcraftMap} could not be joined.", includeCombat: true).TrimEnd('.')
             );
 
         if (!EnsureScrollOutputSpace(scrollName, reward, amount * reward.Quantity))
@@ -4379,7 +4531,7 @@ public class CoreLoneWolf
         if (!PrepareScrollQuestTurnIn(quest.ID))
             return ScrollPreparationFailed(
                 scrollName,
-                $"quest {quest.ID} could not be prepared for completion"
+                ExplainFailure($"quest {quest.ID} could not be prepared for completion.").TrimEnd('.')
             );
 
         int completed = Core.EnsureCompleteMulti(quest.ID, amount);
@@ -4419,7 +4571,7 @@ public class CoreLoneWolf
                 if (!PrepareScrollQuestTurnIn(quest.ID))
                     return ScrollPreparationFailed(
                         scrollName,
-                        $"quest {quest.ID} could not be prepared for the normal completion fallback"
+                        ExplainFailure($"quest {quest.ID} could not be prepared for the normal completion fallback.").TrimEnd('.')
                     );
 
                 bool fallbackCompleted = Core.EnsureComplete(quest.ID);
@@ -4441,7 +4593,7 @@ public class CoreLoneWolf
             if (!PrepareScrollQuestTurnIn(quest.ID))
                 return ScrollPreparationFailed(
                     scrollName,
-                    $"quest {quest.ID} could not be prepared for the final completion fallback"
+                    ExplainFailure($"quest {quest.ID} could not be prepared for the final completion fallback.").TrimEnd('.')
                 );
 
             int finalCompleted = Core.EnsureCompleteMulti(quest.ID, remainingTurnIns);
@@ -4452,14 +4604,14 @@ public class CoreLoneWolf
             else
                 return ScrollPreparationFailed(
                     scrollName,
-                    $"all bounded completion attempts failed; {ConfirmedTurnIns()} of {amount} requested turn-ins were confirmed"
+                    ExplainFailure($"all bounded completion attempts failed; {ConfirmedTurnIns()} of {amount} requested turn-ins were confirmed.").TrimEnd('.')
                 );
         }
 
         if (completed < amount)
             return ScrollPreparationFailed(
                 scrollName,
-                $"the quest completed {completed} of {amount} requested turn-ins"
+                ExplainFailure($"the quest completed {completed} of {amount} requested turn-ins.").TrimEnd('.')
             );
 
         if (previousQuantity == 0)
@@ -4480,7 +4632,7 @@ public class CoreLoneWolf
         if (Bot.Inventory.GetQuantity(scrollName) < targetQuantity)
             return ScrollPreparationFailed(
                 scrollName,
-                $"the quest produced fewer than {targetQuantity} total scrolls"
+                ExplainFailure($"the quest produced fewer than {targetQuantity} total scrolls.").TrimEnd('.')
             );
 
         return true;
@@ -4512,7 +4664,7 @@ public class CoreLoneWolf
 
         return ScrollPreparationFailed(
             scrollName,
-            $"{itemName} could not be moved from bank"
+            ExplainFailure($"{itemName} could not be moved from bank.").TrimEnd('.')
         );
     }
 
@@ -4775,7 +4927,7 @@ public class CoreLoneWolf
                 LogEnhancementResult(
                     slot,
                     requestedEnhancement,
-                    "skipped because no usable enhancement was found"
+                    ExplainFailure("skipped because no usable enhancement was found.").TrimEnd('.')
                 );
                 return;
             }
@@ -4832,7 +4984,7 @@ public class CoreLoneWolf
                     LogEnhancementResult(
                         slot,
                         requestedEnhancement,
-                        $"could not be equipped from inventory. Using the current {GetEnhancementSlotName(slot)}"
+                        ExplainFailure($"could not be equipped from inventory. Using the current {GetEnhancementSlotName(slot)}.", includeCombat: true).TrimEnd('.')
                     );
                 }
             }
@@ -4947,7 +5099,7 @@ public class CoreLoneWolf
                 LogEnhancementResult(
                     slot,
                     requestedEnhancement,
-                    "was not verified after application"
+                    ExplainFailure("was not verified after application.", includeCombat: true).TrimEnd('.')
                 );
                 return;
             }
@@ -4959,7 +5111,7 @@ public class CoreLoneWolf
             Bot.Log(
                 $"CoreLoneWolf enhancement preparation failed for {GetEnhancementSlotName(slot)}: {ex}"
             );
-            LogEnhancementResult(slot, requestedEnhancement, "preparation failed");
+            LogEnhancementResult(slot, requestedEnhancement, ExplainFailure("preparation failed.").TrimEnd('.'));
         }
     }
 
@@ -5512,7 +5664,7 @@ public class CoreLoneWolf
         }
 
         Core.Logger(
-            $"Warning: Ultra quest {questID} could not be accepted. Continuing.",
+            ExplainFailure($"Warning: Ultra quest {questID} could not be accepted. Continuing."),
             "AcceptUltraQuest"
         );
         return false;
@@ -5568,7 +5720,7 @@ public class CoreLoneWolf
         }
 
         Core.Logger(
-            $"Warning: Ultra quest {questID} could not be completed. Continuing.",
+            ExplainFailure($"Warning: Ultra quest {questID} could not be completed. Continuing."),
             "CompleteUltraQuest"
         );
         return false;
@@ -6809,6 +6961,7 @@ public enum SkillEngineMode
     DracoKnight,
     MartialArtist,
     ChaosShaper,
+    KathoolAdeptOptimized,
 }
 
 public class ClassPreset

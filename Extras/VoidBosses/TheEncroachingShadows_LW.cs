@@ -183,7 +183,7 @@ public class TheEncroachingShadows_LW
         questEligible = Bot.Quests.IsInProgress(QuestId);
         if (!questEligible)
         {
-            Core.Logger($"{QuestName} could not be accepted for {playerAlias}. This account will continue as a helper.",
+            Core.Logger(LoneWolf.ExplainFailure($"{QuestName} could not be accepted for {playerAlias}. This account will continue as a helper."),
                 LogPrefix, messageBox: true);
             return !Bot.ShouldExit;
         }
@@ -229,7 +229,7 @@ public class TheEncroachingShadows_LW
 
                     startAttempted = true;
                     if (!child.StartFromMaster())
-                        return Failure("Flibbitiestgibbet setup failed before the item gate was ready.");
+                        return Failure(LoneWolf.ExplainFailure("Flibbitiestgibbet setup failed before the item gate was ready."));
                     if (!VerifyRoom("voidflibbi"))
                         return false;
                     routePreset ??= GetClassPreset();
@@ -239,7 +239,7 @@ public class TheEncroachingShadows_LW
 
                 Core.Logger($"Starting Flibbitiestgibbet kill {cycle + 1}.", LogPrefix);
                 if (!child.RunOnceFromMaster())
-                    return Failure("Flibbitiestgibbet failed before the item gate was ready.");
+                    return Failure(LoneWolf.ExplainFailure("Flibbitiestgibbet failed before the item gate was ready."));
 
                 Bot.Sleep(1500);
                 cycle++;
@@ -395,7 +395,7 @@ public class TheEncroachingShadows_LW
 
         return (string.Equals(Bot.Player.Cell, cell, StringComparison.OrdinalIgnoreCase)
                 && string.Equals(Bot.Player.Pad, pad, StringComparison.OrdinalIgnoreCase))
-            || Failure($"{playerAlias} could not reach {cell} at {pad}.");
+            || Failure(LoneWolf.ExplainFailure($"{playerAlias} could not reach {cell} at {pad}.", includeCombat: true));
     }
 
     private bool Prepare(ClassPreset preset)
@@ -466,18 +466,12 @@ public class TheEncroachingShadows_LW
     private bool VerifyRoom(string map) => !Bot.ShouldExit
         && (string.Equals(Bot.Map.FullName, $"{map}-{privateRoomNumber}",
                 StringComparison.OrdinalIgnoreCase)
-            || Failure($"The configured private {map} room could not be reached."));
+            || Failure(LoneWolf.ExplainFailure($"The configured private {map} room could not be reached.", includeCombat: true)));
 
     private bool MoveToHouse()
     {
         StopCombat();
-        if (Bot.ShouldExit)
-            return false;
-        Bot.Send.Packet($"%xt%zm%house%1%{Bot.Player.Username}%");
-        Bot.Wait.ForMapLoad("house");
-        return !Bot.ShouldExit
-            && (string.Equals(Bot.Map.Name, "house", StringComparison.OrdinalIgnoreCase)
-                || Failure($"{playerAlias} could not reach their house."));
+        return LoneWolf.MoveToHouse(LogPrefix);
     }
 
     private void CompleteQuest()
@@ -493,7 +487,7 @@ public class TheEncroachingShadows_LW
             Core.Logger($"{QuestName} completed for {playerAlias}.", LogPrefix);
             return;
         }
-        Core.Logger($"{QuestName} could not be completed for {playerAlias}. Other accounts will continue.",
+        Core.Logger(LoneWolf.ExplainFailure($"{QuestName} could not be completed for {playerAlias}. Other accounts will continue."),
             LogPrefix, messageBox: true);
     }
 

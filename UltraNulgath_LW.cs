@@ -24,10 +24,6 @@ public class UltraNulgath_LW
         Optimized,
         Pay2Win,
         Fast,
-        Test,
-        Test2,
-        Test3,
-        Test4,
     }
 
     private enum FightResult
@@ -83,7 +79,7 @@ public class UltraNulgath_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / VDK / LR / LOO\nFast: AI / VDK / LR / LOO\nTest: Kathool Adept / SC / AP / LOO\nTest2: Kathool Adept / AP / LR / LOO\nTest3: Kathool Adept / VDK / LR / LOO\nTest4: AI / Kathool Adept / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: DOT / DOT / LR / LOO\nPay2Win: Guardian / VDK / LR / LOO\nFast: AI / VDK / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -166,7 +162,7 @@ public class UltraNulgath_LW
             return;
 
         playerAlias = GetPlayerAlias();
-        isTaunterOne = armyComposition is ArmyComposition.Default or ArmyComposition.Test
+        isTaunterOne = armyComposition is ArmyComposition.Default
             ? LoneWolf.IsArmyPlayer(1)
             : LoneWolf.IsArmyPlayer(3);
         isTaunter = isTaunterOne || LoneWolf.IsArmyPlayer(4);
@@ -474,9 +470,6 @@ public class UltraNulgath_LW
             armyComposition == ArmyComposition.Optimized
             || armyComposition == ArmyComposition.Pay2Win
             || armyComposition == ArmyComposition.Fast
-            || armyComposition == ArmyComposition.Test2
-            || armyComposition == ArmyComposition.Test3
-            || armyComposition == ArmyComposition.Test4
         )
             return NulgathMapId;
 
@@ -602,30 +595,6 @@ public class UltraNulgath_LW
 
     private ClassPreset GetClassPreset()
     {
-        if (
-            LoneWolf.IsArmyPlayer(1)
-            && armyComposition is ArmyComposition.Test or ArmyComposition.Test2 or ArmyComposition.Test3
-        )
-            return LoneWolf.KathoolAdept();
-
-        if (armyComposition is ArmyComposition.Test2 or ArmyComposition.Test3 or ArmyComposition.Test4)
-        {
-            if (LoneWolf.IsArmyPlayer(1))
-                return LoneWolf.ArcanaInvoker();
-
-            if (LoneWolf.IsArmyPlayer(2))
-                return armyComposition switch
-                {
-                    ArmyComposition.Test3 => LoneWolf.VerusDoomKnight(),
-                    ArmyComposition.Test4 => LoneWolf.KathoolAdept(),
-                    _ => LoneWolf.ArchPaladin(),
-                };
-
-            return LoneWolf.IsArmyPlayer(3)
-                ? LoneWolf.LegionRevenant()
-                : LoneWolf.LordOfOrder();
-        }
-
         if (LoneWolf.IsArmyPlayer(1))
         {
             if (armyComposition == ArmyComposition.Fast)

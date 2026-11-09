@@ -263,8 +263,7 @@ public class ArmyPrismatasGoldFarm_LW
         if (Bot.ShouldExit || !armyComplete)
             return;
 
-        MoveToHouse();
-        if (Bot.ShouldExit || !Sync("PARKED"))
+        if (!MoveToHouse() || Bot.ShouldExit || !Sync("PARKED"))
             return;
 
         StopArmy();
@@ -431,7 +430,7 @@ public class ArmyPrismatasGoldFarm_LW
         if (finalQuantity < expectedQuantity)
         {
             return Fatal(
-                $"{itemName} could not be moved completely from bank. Inventory quantity: {finalQuantity}/{expectedQuantity}.",
+                LoneWolf.ExplainFailure($"{itemName} could not be moved completely from bank. Inventory quantity: {finalQuantity}/{expectedQuantity}."),
                 "PrepareBankItems"
             );
         }
@@ -675,7 +674,7 @@ public class ArmyPrismatasGoldFarm_LW
         }
 
         return Fatal(
-            $"{ElementalBinding} failed to sell completely. Remaining quantity: {quantityAfter}.",
+            LoneWolf.ExplainFailure($"{ElementalBinding} failed to sell completely. Remaining quantity: {quantityAfter}."),
             "SellBindings"
         );
     }
@@ -827,11 +826,7 @@ public class ArmyPrismatasGoldFarm_LW
         return true;
     }
 
-    private void MoveToHouse()
-    {
-        Bot.Send.Packet($"%xt%zm%house%1%{Bot.Player.Username}%");
-        Bot.Wait.ForMapLoad("house");
-    }
+    private bool MoveToHouse() => LoneWolf.MoveToHouse(LogPrefix);
 
     private bool Fatal(string message, string caller)
     {

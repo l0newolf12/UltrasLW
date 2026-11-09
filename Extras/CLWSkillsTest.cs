@@ -51,6 +51,7 @@ public class CLWSkillsTest
         Martial_Artist,
         Chaos_Shaper,
         Kathool_Adept,
+        Lich,
     }
 
     private IScriptInterface Bot => IScriptInterface.Instance;
@@ -114,6 +115,12 @@ public class CLWSkillsTest
             false
         ),
         new Option<bool>(
+            "UseKathoolAdeptOptimizedMode",
+            "Use Kathool Adept Optimized Mode",
+            "Use skill 3 at zero or at least ten Feeding stacks, followed by skills 1, 2 and 4.",
+            false
+        ),
+        new Option<bool>(
             "UseGlaceranWarlordHealingMode",
             "Use Glaceran Warlord Healing Mode",
             "Use the healing Strict combo and Penitence cape for Glaceran Warlord.",
@@ -173,13 +180,17 @@ public class CLWSkillsTest
         bool useGlaceranWarlordHealingMode = Bot.Config.Get<bool>(
             "UseGlaceranWarlordHealingMode"
         );
+        bool useKathoolAdeptOptimizedMode = Bot.Config.Get<bool>(
+            "UseKathoolAdeptOptimizedMode"
+        );
         ClassPreset preset = GetClassPreset(
             selectedPreset,
             useLightCasterHealingMode,
             useShamanFarmMode,
             useChronoShadowHunterGunslingerMode,
             useChaosAvengerOptimizedMode,
-            useGlaceranWarlordHealingMode
+            useGlaceranWarlordHealingMode,
+            useKathoolAdeptOptimizedMode
         );
 
         Core.Join("classhall");
@@ -263,7 +274,8 @@ public class CLWSkillsTest
         bool useShamanFarmMode,
         bool useChronoShadowHunterGunslingerMode,
         bool useChaosAvengerOptimizedMode,
-        bool useGlaceranWarlordHealingMode
+        bool useGlaceranWarlordHealingMode,
+        bool useKathoolAdeptOptimizedMode
     ) =>
         selectedPreset switch
         {
@@ -308,7 +320,10 @@ public class CLWSkillsTest
             SkillPresetChoice.Interstellar_Knight => LoneWolf.InterstellarKnight(),
             SkillPresetChoice.Martial_Artist => LoneWolf.MartialArtist(),
             SkillPresetChoice.Chaos_Shaper => LoneWolf.ChaosShaper(),
-            SkillPresetChoice.Kathool_Adept => LoneWolf.KathoolAdept(),
+            SkillPresetChoice.Kathool_Adept => LoneWolf.KathoolAdept(
+                useKathoolAdeptOptimizedMode
+            ),
+            SkillPresetChoice.Lich => LoneWolf.Lich(),
             _ => LoneWolf.LegionRevenant(),
         };
 }

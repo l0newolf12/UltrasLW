@@ -23,7 +23,6 @@ public class UltraDarkon_LW
         Reliable = 2,
         Optimized = 3,
         Pay2Win = 4,
-        Test = 5,
     }
 
     private enum FightResult
@@ -86,7 +85,7 @@ public class UltraDarkon_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO\nTest: Kathool Adept / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -1007,7 +1006,6 @@ public class UltraDarkon_LW
 
     private bool UsesPlayerOneAndTwoTaunters() =>
         armyComposition == ArmyComposition.Default
-        || armyComposition == ArmyComposition.Test
         || armyComposition == ArmyComposition.Reliable;
 
     private bool UsesRelayedAttack2() =>
@@ -1051,9 +1049,7 @@ public class UltraDarkon_LW
                 preset = LoneWolf.LightCaster();
             else
             {
-                preset = armyComposition == ArmyComposition.Test
-                    ? LoneWolf.KathoolAdept()
-                    : LoneWolf.LegionRevenant();
+                preset = LoneWolf.LegionRevenant();
                 preset.CapeEnhancement = CapeSpecial.Lament;
             }
         }

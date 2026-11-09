@@ -21,7 +21,7 @@ public class UltraWarden_LW
         Stable,
         Reliable,
         Pay2Win,
-        Test,
+        Abyssal = 4,
     }
 
     private enum FightResult
@@ -71,7 +71,7 @@ public class UltraWarden_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nTest: Kathool Adept / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nAbyssal: Kathool Adept / SC / AP / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -444,9 +444,9 @@ public class UltraWarden_LW
     {
         if (
             LoneWolf.IsArmyPlayer(1)
-            && armyComposition is ArmyComposition.Test
+            && armyComposition is ArmyComposition.Abyssal
         )
-            return LoneWolf.KathoolAdept();
+            return LoneWolf.KathoolAdept(optimizedMode: true);
 
         if (LoneWolf.IsArmyPlayer(1))
             return armyComposition switch

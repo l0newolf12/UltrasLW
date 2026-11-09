@@ -29,7 +29,7 @@ public class UltraSpeaker_LW
         Default = 0,
         Reliable = 1,
         Pay2Win = 2,
-        Test = 3,
+        Fast = 5,
     }
 
     private sealed class SpeakerStep
@@ -178,7 +178,7 @@ public class UltraSpeaker_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nTest: Kathool Adept / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nPay2Win: Guardian / SC / LR / AP\nFast: Martial Artist / SC / LR / AP",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -1092,7 +1092,7 @@ public class UltraSpeaker_LW
 
     private SpeakerStep[] GetSectionSteps(int section)
     {
-        if (armyComposition == ArmyComposition.Pay2Win)
+        if (UsesPay2WinComposition())
         {
             return section switch
             {
@@ -1122,6 +1122,7 @@ public class UltraSpeaker_LW
         int[] zoneOwners = armyComposition switch
         {
             ArmyComposition.Pay2Win => Pay2WinZoneOwners,
+            ArmyComposition.Fast => Pay2WinZoneOwners,
             _ => ZoneOwners,
         };
         return zoneOwners[(cycle - 1) % zoneOwners.Length];
@@ -1130,12 +1131,17 @@ public class UltraSpeaker_LW
     private int GetArchPaladinPlayer() => armyComposition switch
     {
         ArmyComposition.Pay2Win => 4,
+        ArmyComposition.Fast => 4,
         _ => 3,
     };
 
     private bool IsTaunter() =>
-        armyComposition != ArmyComposition.Pay2Win
+        !UsesPay2WinComposition()
         || !LoneWolf.IsArmyPlayer(1);
+
+    private bool UsesPay2WinComposition() =>
+        armyComposition == ArmyComposition.Pay2Win
+        || armyComposition == ArmyComposition.Fast;
 
     private bool IsAtCoordinate(int x, int y) =>
         Math.Abs(Bot.Player.X - x) <= CoordinateTolerance
@@ -1170,14 +1176,15 @@ public class UltraSpeaker_LW
     {
         if (LoneWolf.IsArmyPlayer(1))
         {
+            if (armyComposition == ArmyComposition.Fast)
+                return LoneWolf.MartialArtist();
+
             if (armyComposition == ArmyComposition.Pay2Win)
                 return LoneWolf.Guardian();
 
             ClassPreset preset = UsesReliableComposition()
                 ? LoneWolf.VerusDoomKnight()
-                : armyComposition == ArmyComposition.Test
-                    ? LoneWolf.KathoolAdept()
-                    : LoneWolf.LegionRevenant();
+                : LoneWolf.LegionRevenant();
             preset.CapeEnhancement = CapeSpecial.Penitence;
 
             if (!UsesReliableComposition())
@@ -1189,14 +1196,16 @@ public class UltraSpeaker_LW
         if (LoneWolf.IsArmyPlayer(2))
         {
             ClassPreset preset = LoneWolf.StoneCrusher();
-            preset.CapeEnhancement = CapeSpecial.Penitence;
+            preset.CapeEnhancement = armyComposition == ArmyComposition.Fast
+                ? CapeSpecial.Absolution
+                : CapeSpecial.Penitence;
             preset.Elixir = "Divine Elixir";
             return preset;
         }
 
         if (LoneWolf.IsArmyPlayer(3))
         {
-            if (armyComposition == ArmyComposition.Pay2Win)
+            if (UsesPay2WinComposition())
             {
                 ClassPreset legionRevenant = LoneWolf.LegionRevenant();
                 legionRevenant.CapeEnhancement = CapeSpecial.Penitence;
@@ -1213,7 +1222,7 @@ public class UltraSpeaker_LW
             return preset;
         }
 
-        if (armyComposition == ArmyComposition.Pay2Win)
+        if (UsesPay2WinComposition())
         {
             ClassPreset archPaladin = LoneWolf.ArchPaladin();
             archPaladin.CapeEnhancement = CapeSpecial.Penitence;

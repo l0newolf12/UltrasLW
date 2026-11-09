@@ -267,7 +267,7 @@ public class WrongTurnatVoidbuquerque_LW
         if (!questEligible)
         {
             Core.Logger(
-                $"{QuestName} could not be accepted for {playerAlias}. This account will continue as a helper.",
+                LoneWolf.ExplainFailure($"{QuestName} could not be accepted for {playerAlias}. This account will continue as a helper."),
                 LogPrefix,
                 messageBox: true
             );
@@ -330,7 +330,7 @@ public class WrongTurnatVoidbuquerque_LW
                     if (!startBoss())
                     {
                         return BossFailure(
-                            $"{bossName} setup failed before the essence gate was ready."
+                            LoneWolf.ExplainFailure($"{bossName} setup failed before the essence gate was ready.")
                         );
                     }
 
@@ -341,7 +341,7 @@ public class WrongTurnatVoidbuquerque_LW
                 if (!runBoss())
                 {
                     return BossFailure(
-                        $"{bossName} failed before the essence gate was ready."
+                        LoneWolf.ExplainFailure($"{bossName} failed before the essence gate was ready.")
                     );
                 }
 
@@ -371,9 +371,7 @@ public class WrongTurnatVoidbuquerque_LW
 
     private bool MoveToHouse()
     {
-        Bot.Send.Packet($"%xt%zm%house%1%{Bot.Player.Username}%");
-        Bot.Wait.ForMapLoad("house");
-        return !Bot.ShouldExit;
+        return LoneWolf.MoveToHouse(LogPrefix);
     }
 
     private void CompleteQuest()
@@ -396,7 +394,7 @@ public class WrongTurnatVoidbuquerque_LW
         }
 
         Core.Logger(
-            $"{QuestName} could not be completed for {playerAlias}. Other accounts will continue.",
+            LoneWolf.ExplainFailure($"{QuestName} could not be completed for {playerAlias}. Other accounts will continue."),
             LogPrefix,
             messageBox: true
         );
