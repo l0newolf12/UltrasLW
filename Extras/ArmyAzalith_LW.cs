@@ -129,6 +129,9 @@ public class ArmyAzalith_LW
         if (!LoneWolf.StartArmySync(SyncFileName, armyPlayerCount))
             return;
 
+        if (!LoneWolf.ValidateHouseRequirements())
+            return;
+
         playerAlias = GetPlayerAlias();
         ClassPreset preset = GetClassPreset();
         Core.Logger(

@@ -195,6 +195,9 @@ public class MidnightSun_LW
         if (!LoneWolf.StartArmySync(SyncFileName, 4, masterMode ? "Setup" : null))
             return false;
 
+        if (!LoneWolf.ValidateHouseRequirements())
+            return false;
+
         playerAlias = GetPlayerAlias();
         isTaunter = LoneWolf.IsArmyPlayer(PrimaryTaunterArmyPlayer)
             || LoneWolf.IsArmyPlayer(4);

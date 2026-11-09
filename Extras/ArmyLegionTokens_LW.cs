@@ -144,6 +144,9 @@ public class ArmyLegionTokens_LW
         if (!ValidateOptions() || !LoneWolf.StartArmySync(SyncFileName, armyPlayerCount))
             return;
 
+        if (!LoneWolf.ValidateHouseRequirements())
+            return;
+
         playerAlias = GetPlayerAlias();
         eligible = CanEarnTokens();
         Core.BankingBlackList.Add(LegionToken);

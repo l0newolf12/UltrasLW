@@ -142,6 +142,9 @@ public class GreatbladeOfTheEntwinedEclipse_LW
         if (!LoneWolf.StartArmySync(SyncFileName, 4, "Setup"))
             return;
 
+        if (!LoneWolf.ValidateHouseRequirements())
+            return;
+
         playerAlias = GetPlayerAlias();
         buybackMethod = Bot.Config.Get<bool>("Temple_Shrine", "BuybackMethod");
         RegisterDrops();

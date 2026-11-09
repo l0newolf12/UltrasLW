@@ -22,7 +22,7 @@ public class UltraGramiel_LW
         Optimized = 1,
         Reliable = 2,
         Pay2Win = 3,
-        Abyssal = 6,
+        Abyssal,
     }
 
     private enum PhaseResult

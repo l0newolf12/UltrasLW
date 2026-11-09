@@ -22,7 +22,7 @@ public class UltraDrago_LW
         Stable,
         Reliable,
         Pay2Win,
-        Abyssal = 5,
+        Abyssal,
     }
 
     private enum FightResult

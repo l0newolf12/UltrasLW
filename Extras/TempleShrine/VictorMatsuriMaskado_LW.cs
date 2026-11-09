@@ -188,6 +188,9 @@ public class VictorMatsuriMaskado_LW
         if (!LoneWolf.StartArmySync(SyncFileName, 4, masterMode ? "Setup" : null))
             return;
 
+        if (!LoneWolf.ValidateHouseRequirements())
+            return;
+
         playerAlias = GetPlayerAlias();
         isTaunter = LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4);
         ClassPreset preset = GetClassPreset();

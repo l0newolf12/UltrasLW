@@ -459,6 +459,9 @@ public class AllUltras_LW
         if (!LoneWolf.StartArmySync(CompletionSyncFileName, 4, "Setup"))
             return false;
 
+        if (!LoneWolf.ValidateHouseRequirements())
+            return false;
+
         int localRequiredMask = BuildLocalRequiredMask();
         foreach (int ultraBit in UltraBits)
         {
@@ -663,9 +666,26 @@ public class AllUltras_LW
         return ResetBetweenUltras();
     }
 
+    private string GetConfiguredPlayerAlias()
+    {
+        string username = Core.Username().Trim();
+        if (username.Length == 0)
+            return "unknownPlayer";
+
+        string[] playerAliases = { "playerOne", "playerTwo", "playerThree", "playerFour" };
+        for (int index = 0; index < playerAliases.Length; index++)
+        {
+            string? configuredPlayer = Bot.Config?.Get<string>("Setup", $"player{index + 1}");
+            if (string.Equals(configuredPlayer?.Trim(), username, StringComparison.OrdinalIgnoreCase))
+                return playerAliases[index];
+        }
+
+        return "unknownPlayer";
+    }
+
     private bool ResetBetweenUltras()
     {
-        if (!LoneWolf.MoveToHouse(LogPrefix))
+        if (!LoneWolf.MoveToHouse(LogPrefix, playerAlias: GetConfiguredPlayerAlias()))
             return false;
 
         Bot.Sleep(1_000);

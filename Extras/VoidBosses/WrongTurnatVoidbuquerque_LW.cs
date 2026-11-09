@@ -233,7 +233,8 @@ public class WrongTurnatVoidbuquerque_LW
     }
 
     private bool StartArmy() =>
-        LoneWolf.StartArmySync(SyncFileName, armyPlayerCount, "Setup");
+        LoneWolf.StartArmySync(SyncFileName, armyPlayerCount, "Setup")
+        && LoneWolf.ValidateHouseRequirements();
 
     private bool PrepareQuest()
     {

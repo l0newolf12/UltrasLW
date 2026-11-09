@@ -906,12 +906,12 @@ public class CoreLoneWolf
         }
     }
 
-    public bool MoveToHouse(string logPrefix = "CoreLoneWolf")
+    public bool MoveToHouse(string logPrefix = "CoreLoneWolf", string? playerAlias = null)
     {
         if (Bot.ShouldExit)
             return false;
 
-        string playerAlias = LogArmyName(Bot.Player.Username);
+        playerAlias ??= LogArmyName(Bot.Player.Username);
         string? failure = Bot.Player.Kicked
             ? $"{playerAlias} cannot move to the house because the account was kicked."
             : !Bot.Player.LoggedIn
@@ -5737,62 +5737,8 @@ public class CoreLoneWolf
     {
         bypassedUltraQuestID = 0;
 
-        if (
-            Bot.Player.Level < minimumLevel
-            && !SendArmySignal("ULTRA_LEVEL_INVALID")
-        )
+        if (!ValidateArmyRequirements(minimumLevel, ultraName))
             return false;
-
-        bool hasRequiredDamageBoost = Bot.Inventory.Items.Any(item =>
-            item.Equipped
-            && (
-                !Core.NoneEnhancableFilter(item)
-                || item.Category == ItemCategory.Armor
-            )
-            && Core.GetBoostFloat(item, "dmgAll") >= 1.30f
-        );
-
-        if (
-            !hasRequiredDamageBoost
-            && !SendArmySignal("ULTRA_WEAPON_INVALID")
-        )
-            return false;
-
-        if (!SyncArmy("ULTRA_ACCESS_CHECK"))
-            return false;
-
-        List<string> playersBelowLevel = new();
-        List<string> playersMissingDamageBoost = new();
-        for (int playerNumber = 1; playerNumber <= armyPlayers.Length; playerNumber++)
-        {
-            if (HasArmySignal("ULTRA_LEVEL_INVALID", playerNumber))
-                playersBelowLevel.Add($"Player {playerNumber}");
-
-            if (HasArmySignal("ULTRA_WEAPON_INVALID", playerNumber))
-                playersMissingDamageBoost.Add($"Player {playerNumber}");
-        }
-
-        if (playersBelowLevel.Count > 0)
-        {
-            Core.Logger(
-                $"{ultraName} requires every player to be at least level {minimumLevel}. Players below the requirement: {string.Join(", ", playersBelowLevel)}.",
-                "ValidateUltraAccess",
-                messageBox: true,
-                stopBot: true
-            );
-            return false;
-        }
-
-        if (playersMissingDamageBoost.Count > 0)
-        {
-            Core.Logger(
-                $"{ultraName} requires every player to equip a weapon or armor with at least a 30% damage boost to all before starting. Players missing the equipped boost: {string.Join(", ", playersMissingDamageBoost)}. Equip a qualifying weapon or armor and restart the script.",
-                "ValidateUltraAccess",
-                messageBox: true,
-                stopBot: true
-            );
-            return false;
-        }
 
         if (
             prerequisiteQuestID > 0
@@ -5883,10 +5829,12 @@ public class CoreLoneWolf
             ? StartLeaderArmySession()
             : JoinFollowerArmySession();
         armySessionStarted = started;
-        return started && ValidateEquippedHouseRequirement();
+        return started;
     }
 
-    private bool ValidateEquippedHouseRequirement()
+    public bool ValidateHouseRequirements() => ValidateArmyRequirements();
+
+    private bool ValidateArmyRequirements(int? minimumLevel = null, string ultraName = "")
     {
         InventoryItem[]? houseItems = null;
         bool requestedHouseInventory = false;
@@ -5923,6 +5871,30 @@ public class CoreLoneWolf
         if (Bot.ShouldExit)
             return false;
 
+        if (minimumLevel.HasValue)
+        {
+            if (
+                Bot.Player.Level < minimumLevel.Value
+                && !SendArmySignal("ULTRA_LEVEL_INVALID")
+            )
+                return false;
+
+            bool hasRequiredDamageBoost = Bot.Inventory.Items.Any(item =>
+                item.Equipped
+                && (
+                    !Core.NoneEnhancableFilter(item)
+                    || item.Category == ItemCategory.Armor
+                )
+                && Core.GetBoostFloat(item, "dmgAll") >= 1.30f
+            );
+
+            if (
+                !hasRequiredDamageBoost
+                && !SendArmySignal("ULTRA_WEAPON_INVALID")
+            )
+                return false;
+        }
+
         string? failureSignal = houseItems == null
             ? "HOUSE_REQUIREMENT_UNAVAILABLE"
             : houseItems.Any(item =>
@@ -5934,8 +5906,44 @@ public class CoreLoneWolf
         if (failureSignal != null && !SendArmySignal(failureSignal))
             return false;
 
-        if (!SyncArmy("HOUSE_REQUIREMENTS"))
+        if (!SyncArmy(minimumLevel.HasValue ? "ULTRA_ACCESS_CHECK" : "HOUSE_REQUIREMENTS"))
             return false;
+
+        if (minimumLevel.HasValue)
+        {
+            List<string> playersBelowLevel = new();
+            List<string> playersMissingDamageBoost = new();
+            for (int playerNumber = 1; playerNumber <= armyPlayers.Length; playerNumber++)
+            {
+                if (HasArmySignal("ULTRA_LEVEL_INVALID", playerNumber))
+                    playersBelowLevel.Add($"Player {playerNumber}");
+
+                if (HasArmySignal("ULTRA_WEAPON_INVALID", playerNumber))
+                    playersMissingDamageBoost.Add($"Player {playerNumber}");
+            }
+
+            if (playersBelowLevel.Count > 0)
+            {
+                Core.Logger(
+                    $"{ultraName} requires every player to be at least level {minimumLevel}. Players below the requirement: {string.Join(", ", playersBelowLevel)}.",
+                    "ValidateUltraAccess",
+                    messageBox: true,
+                    stopBot: true
+                );
+                return false;
+            }
+
+            if (playersMissingDamageBoost.Count > 0)
+            {
+                Core.Logger(
+                    $"{ultraName} requires every player to equip a weapon or armor with at least a 30% damage boost to all before starting. Players missing the equipped boost: {string.Join(", ", playersMissingDamageBoost)}. Equip a qualifying weapon or armor and restart the script.",
+                    "ValidateUltraAccess",
+                    messageBox: true,
+                    stopBot: true
+                );
+                return false;
+            }
+        }
 
         string[] lines = ReadArmyLines();
         if (Bot.ShouldExit || armyTransportFailed || !CanContinueArmySync(lines))

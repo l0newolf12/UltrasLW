@@ -24,7 +24,7 @@ public class UltraTyndarius_LW
         Fast,
         Pay2Win,
         Test,
-        Abyssal = 6,
+        Abyssal,
     }
 
     private enum FightResult

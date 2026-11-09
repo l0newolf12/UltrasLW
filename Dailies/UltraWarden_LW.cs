@@ -21,7 +21,7 @@ public class UltraWarden_LW
         Stable,
         Reliable,
         Pay2Win,
-        Abyssal = 4,
+        Abyssal,
     }
 
     private enum FightResult

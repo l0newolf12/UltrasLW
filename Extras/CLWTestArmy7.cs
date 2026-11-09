@@ -76,6 +76,9 @@ public class CLWTestArmy7
         if (!LoneWolf.StartArmySync(SyncFileName, 7))
             return;
 
+        if (!LoneWolf.ValidateHouseRequirements())
+            return;
+
         playerAlias = GetPlayerAlias();
         Core.Logger($"{LogPrefix} started as {playerAlias}.");
 

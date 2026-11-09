@@ -108,6 +108,9 @@ public class TheEncroachingShadows_LW
             || !LoneWolf.StartArmySync(SyncFileName, armyPlayerCount, "Setup"))
             return;
 
+        if (!LoneWolf.ValidateHouseRequirements())
+            return;
+
         playerAlias = GetPlayerAlias();
         Core.Logger($"{LogPrefix} started as {playerAlias} using {armyComposition} composition.");
         Core.BankingBlackList.AddRange(new[]
