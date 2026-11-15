@@ -273,6 +273,27 @@ public class CoreLoneWolf
 
     public void SetAntiLag()
     {
+        if (Core.IsVibeSkuaAvalonia())
+        {
+            try
+            {
+                var streamerMode = Bot.Options.GetType().GetProperty("StreamerMode");
+                if (streamerMode == null || streamerMode.PropertyType != typeof(bool)
+                    || streamerMode.SetMethod?.IsPublic != true)
+                    Core.Logger("VibeSkua Streamer Mode option is unavailable.", "SetAntiLag");
+                else
+                {
+                    streamerMode.SetValue(Bot.Options, false);
+                    if (Bot.Map.Loaded)
+                        Bot.Flash.CallGameFunction("updateAreaName");
+                }
+            }
+            catch
+            {
+                Core.Logger("VibeSkua Streamer Mode setup could not be completed.", "SetAntiLag");
+            }
+        }
+
         Bot.Options.HidePlayers = true;
         Bot.Lite.DisableSelfAnimation = true;
         Bot.Lite.DisableMonsterAnimation = true;
@@ -917,12 +938,12 @@ public class CoreLoneWolf
             : !Bot.Player.LoggedIn
                 ? $"{playerAlias} cannot move to the house because the account is disconnected."
                 : null;
+        long startedAt = Environment.TickCount64;
+        int attempts = 0;
 
         if (failure == null)
         {
-            long startedAt = Environment.TickCount64;
-            Bot.Send.Packet($"%xt%zm%house%1%{Bot.Player.Username}%");
-            while (!Bot.ShouldExit)
+            while (!Bot.ShouldExit && attempts < 2)
             {
                 if (Bot.Player.Kicked)
                 {
@@ -934,6 +955,39 @@ public class CoreLoneWolf
                     failure = $"{playerAlias} disconnected while waiting for the house.";
                     break;
                 }
+                if (attempts > 0 && !Bot.Player.Alive)
+                    break;
+
+                long attemptStartedAt = Environment.TickCount64;
+                attempts++;
+                Bot.Send.Packet($"%xt%zm%house%1%{Bot.Player.Username}%");
+                while (!Bot.ShouldExit)
+                {
+                    if (Bot.Player.Kicked)
+                    {
+                        failure = $"{playerAlias} was kicked while waiting for the house.";
+                        break;
+                    }
+                    if (!Bot.Player.LoggedIn)
+                    {
+                        failure = $"{playerAlias} disconnected while waiting for the house.";
+                        break;
+                    }
+                    if (string.Equals(Bot.Map.Name, "house", StringComparison.OrdinalIgnoreCase)
+                        && Bot.Map.Loaded)
+                    {
+                        if (Bot.ShouldExit)
+                            return false;
+                        Core.Logger($"{playerAlias} reached the loaded house map after {Environment.TickCount64 - startedAt} ms.", logPrefix);
+                        return true;
+                    }
+                    if (Environment.TickCount64 - attemptStartedAt >= 10_000)
+                        break;
+                    Bot.Sleep(100);
+                }
+
+                if (Bot.ShouldExit || failure != null)
+                    break;
                 if (string.Equals(Bot.Map.Name, "house", StringComparison.OrdinalIgnoreCase)
                     && Bot.Map.Loaded)
                 {
@@ -942,9 +996,30 @@ public class CoreLoneWolf
                     Core.Logger($"{playerAlias} reached the loaded house map after {Environment.TickCount64 - startedAt} ms.", logPrefix);
                     return true;
                 }
-                if (Environment.TickCount64 - startedAt >= 10_000)
+                if (attempts == 2)
                     break;
-                Bot.Sleep(100);
+
+                string mapName = Bot.Map.Name;
+                if (string.IsNullOrEmpty(mapName)
+                    || string.Equals(mapName, "house", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(mapName, "buyhouse", StringComparison.OrdinalIgnoreCase)
+                    || Bot.Player.Kicked || !Bot.Player.LoggedIn || !Bot.Player.Alive
+                    || Bot.Map.Loading || !Bot.Map.Loaded)
+                    break;
+
+                string cell = Bot.Player.Cell;
+                string pad = Bot.Player.Pad;
+                if (string.IsNullOrEmpty(cell) || string.IsNullOrEmpty(pad) || Bot.ShouldExit)
+                    break;
+                try
+                {
+                    Bot.Map.Jump(cell, pad, autoCorrect: false, clientOnly: false);
+                }
+                catch
+                {
+                    failure = $"{playerAlias} could not refresh the current cell before retrying the house.";
+                    break;
+                }
             }
         }
 
@@ -953,26 +1028,45 @@ public class CoreLoneWolf
 
         if (failure == null)
         {
-            string mapName = Bot.Map.Name;
-            failure = string.Equals(mapName, "buyhouse", StringComparison.OrdinalIgnoreCase)
-                ? $"{playerAlias} reached buyhouse instead of house."
-                : string.Equals(mapName, "house", StringComparison.OrdinalIgnoreCase)
-                    ? $"{playerAlias} reached the house map, but loading did not finish within 10 seconds."
-                    : $"{playerAlias} did not reach the house within 10 seconds.";
-
-            if (!string.Equals(mapName, "buyhouse", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(mapName, "house", StringComparison.OrdinalIgnoreCase))
+            if (Bot.Player.Kicked)
+                failure = $"{playerAlias} was kicked while waiting for the house.";
+            else if (!Bot.Player.LoggedIn)
+                failure = $"{playerAlias} disconnected while waiting for the house.";
+            else if (string.Equals(Bot.Map.Name, "house", StringComparison.OrdinalIgnoreCase)
+                && Bot.Map.Loaded)
             {
-                try
+                if (Bot.ShouldExit)
+                    return false;
+                Core.Logger($"{playerAlias} reached the loaded house map after {Environment.TickCount64 - startedAt} ms.", logPrefix);
+                return true;
+            }
+            else
+            {
+                string mapName = Bot.Map.Name;
+                failure = string.Equals(mapName, "buyhouse", StringComparison.OrdinalIgnoreCase)
+                    ? $"{playerAlias} reached buyhouse instead of house."
+                    : string.Equals(mapName, "house", StringComparison.OrdinalIgnoreCase)
+                        ? attempts == 2
+                            ? $"{playerAlias} reached the house map, but loading did not finish within 10 seconds on the retry."
+                            : $"{playerAlias} reached the house map, but loading did not finish within 10 seconds."
+                        : attempts == 2
+                            ? $"{playerAlias} did not reach the house after 2 attempts."
+                            : $"{playerAlias} did not reach the house within 10 seconds.";
+
+                if (!string.Equals(mapName, "buyhouse", StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(mapName, "house", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!Bot.Player.Alive)
-                        failure += " The player is dead.";
-                    else if (Bot.Player.InCombat)
-                        failure += " Still in combat.";
-                }
-                catch
-                {
-                    // A diagnostic read must not replace the arrival failure.
+                    try
+                    {
+                        if (!Bot.Player.Alive)
+                            failure += " The player is dead.";
+                        else if (Bot.Player.InCombat)
+                            failure += " Still in combat.";
+                    }
+                    catch
+                    {
+                        // A diagnostic read must not replace the arrival failure.
+                    }
                 }
             }
         }
