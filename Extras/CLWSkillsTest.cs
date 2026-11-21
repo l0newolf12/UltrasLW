@@ -121,6 +121,12 @@ public class CLWSkillsTest
             false
         ),
         new Option<bool>(
+            "UseLichOptimizedMode",
+            "Use Lich Optimized Mode",
+            "Run the normal opener, then prioritize 4-3 only above 80 percent HP without self Necrotic Edge; otherwise alternate 4-2 and 4-1.",
+            false
+        ),
+        new Option<bool>(
             "UseGlaceranWarlordHealingMode",
             "Use Glaceran Warlord Healing Mode",
             "Use the healing Strict combo and Penitence cape for Glaceran Warlord.",
@@ -183,6 +189,7 @@ public class CLWSkillsTest
         bool useKathoolAdeptOptimizedMode = Bot.Config.Get<bool>(
             "UseKathoolAdeptOptimizedMode"
         );
+        bool useLichOptimizedMode = Bot.Config.Get<bool>("UseLichOptimizedMode");
         ClassPreset preset = GetClassPreset(
             selectedPreset,
             useLightCasterHealingMode,
@@ -190,7 +197,8 @@ public class CLWSkillsTest
             useChronoShadowHunterGunslingerMode,
             useChaosAvengerOptimizedMode,
             useGlaceranWarlordHealingMode,
-            useKathoolAdeptOptimizedMode
+            useKathoolAdeptOptimizedMode,
+            useLichOptimizedMode
         );
 
         Core.Join("classhall");
@@ -275,7 +283,8 @@ public class CLWSkillsTest
         bool useChronoShadowHunterGunslingerMode,
         bool useChaosAvengerOptimizedMode,
         bool useGlaceranWarlordHealingMode,
-        bool useKathoolAdeptOptimizedMode
+        bool useKathoolAdeptOptimizedMode,
+        bool useLichOptimizedMode
     ) =>
         selectedPreset switch
         {
@@ -323,7 +332,7 @@ public class CLWSkillsTest
             SkillPresetChoice.Kathool_Adept => LoneWolf.KathoolAdept(
                 useKathoolAdeptOptimizedMode
             ),
-            SkillPresetChoice.Lich => LoneWolf.Lich(),
+            SkillPresetChoice.Lich => LoneWolf.Lich(useLichOptimizedMode),
             _ => LoneWolf.LegionRevenant(),
         };
 }

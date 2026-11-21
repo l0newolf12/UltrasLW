@@ -92,6 +92,10 @@ public class UltraSpeaker_LW
     private const int SafeY = 395;
     private const int RedX = 731;
     private const int RedY = 380;
+    private const double RedZoneMinX = 180.65;
+    private const double RedZoneMaxX = 793.4046776;
+    private const double RedZoneMinY = 220.55;
+    private const double RedZoneMaxY = 515.232;
     private const int CoordinateTolerance = 20;
     private const int WalkSpeed = 8;
     private const int MovementRetryDelay = 500;
@@ -715,13 +719,19 @@ public class UltraSpeaker_LW
             int owner = GetZoneOwner(cycle);
             if (!bruteForceMethod)
             {
-                if (
-                    LoneWolf.IsArmyPlayer(owner)
-                    && !IsAtCoordinate(RedX, RedY)
-                )
+                if (LoneWolf.IsArmyPlayer(owner))
                 {
-                    mismatch = $"Equalize cycle {cycle} owner was not in the red zone.";
-                    return false;
+                    if (!TryReadPlayerPosition(out double x, out double y))
+                    {
+                        mismatch = $"Equalize cycle {cycle} owner position could not be verified.";
+                        return false;
+                    }
+
+                    if (!IsInRedZone(x, y))
+                    {
+                        mismatch = $"Equalize cycle {cycle} owner was not in the red zone.";
+                        return false;
+                    }
                 }
             }
 
@@ -1144,8 +1154,21 @@ public class UltraSpeaker_LW
         || armyComposition == ArmyComposition.Fast;
 
     private bool IsAtCoordinate(int x, int y) =>
-        Math.Abs(Bot.Player.X - x) <= CoordinateTolerance
-        && Math.Abs(Bot.Player.Y - y) <= CoordinateTolerance;
+        TryReadPlayerPosition(out double playerX, out double playerY)
+        && Math.Abs(playerX - x) <= CoordinateTolerance
+        && Math.Abs(playerY - y) <= CoordinateTolerance;
+
+    private bool TryReadPlayerPosition(out double x, out double y)
+    {
+        x = Bot.Flash.GetGameObject<double?>("world.myAvatar.pMC.x") ?? double.NaN;
+        y = Bot.Flash.GetGameObject<double?>("world.myAvatar.pMC.y") ?? double.NaN;
+        return !double.IsNaN(x) && !double.IsInfinity(x)
+            && !double.IsNaN(y) && !double.IsInfinity(y);
+    }
+
+    private bool IsInRedZone(double x, double y) =>
+        x >= RedZoneMinX && x <= RedZoneMaxX
+        && y >= RedZoneMinY && y <= RedZoneMaxY;
 
     private bool IsInBossRoom() =>
         Bot.Player.Cell == BossCell && Bot.Player.Pad == BossPad;

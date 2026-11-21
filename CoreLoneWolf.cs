@@ -172,6 +172,9 @@ public class CoreLoneWolf
     private bool useSurvivalSkill = true;
     private string? maintainedPotion;
     private int kingsEchoManaThreshold = 12;
+    private bool lichOpeningComplete;
+    private int lichPendingSkill;
+    private int lichNextFallbackSkill = 2;
     private bool ssotOpeningComplete;
     private bool archivistOpeningComplete;
     private bool dracoKnightOpeningComplete;
@@ -665,12 +668,14 @@ public class CoreLoneWolf
             CombatPotion = "Potent Honor Potion",
         };
 
-    public ClassPreset Lich() =>
+    public ClassPreset Lich(bool optimizedMode = false) =>
         new()
         {
             ClassName = "Lich",
             Skills = new[] { 4, 3, 4, 2, 4, 1, 3, 2, 4, 1 },
-            SkillMode = SkillEngineMode.Strict,
+            SkillMode = optimizedMode
+                ? SkillEngineMode.LichOptimized
+                : SkillEngineMode.Strict,
             BaseEnhancement = EnhancementType.Lucky,
             CapeEnhancement = CapeSpecial.Vainglory,
             HelmEnhancement = HelmSpecial.Forge,
@@ -999,27 +1004,51 @@ public class CoreLoneWolf
                 if (attempts == 2)
                     break;
 
-                string mapName = Bot.Map.Name;
-                if (string.IsNullOrEmpty(mapName)
-                    || string.Equals(mapName, "house", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(mapName, "buyhouse", StringComparison.OrdinalIgnoreCase)
-                    || Bot.Player.Kicked || !Bot.Player.LoggedIn || !Bot.Player.Alive
-                    || Bot.Map.Loading || !Bot.Map.Loaded)
-                    break;
+                const int maxRefreshes = 3;
+                bool retryHouse = false;
+                for (int refreshes = 0; !Bot.ShouldExit; refreshes++)
+                {
+                    try
+                    {
+                        string mapName = Bot.Map.Name;
+                        if (string.IsNullOrEmpty(mapName)
+                            || string.Equals(mapName, "house", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(mapName, "buyhouse", StringComparison.OrdinalIgnoreCase)
+                            || Bot.Player.Kicked || !Bot.Player.LoggedIn || !Bot.Player.Alive
+                            || Bot.Map.Loading || !Bot.Map.Loaded)
+                            break;
 
-                string cell = Bot.Player.Cell;
-                string pad = Bot.Player.Pad;
-                if (string.IsNullOrEmpty(cell) || string.IsNullOrEmpty(pad) || Bot.ShouldExit)
-                    break;
-                try
-                {
-                    Bot.Map.Jump(cell, pad, autoCorrect: false, clientOnly: false);
+                        string cell = Bot.Player.Cell;
+                        string pad = Bot.Player.Pad;
+                        if (string.IsNullOrEmpty(cell) || string.IsNullOrEmpty(pad) || Bot.ShouldExit)
+                            break;
+
+                        if (refreshes > 0)
+                        {
+                            if (!Bot.Player.InCombat)
+                            {
+                                retryHouse = true;
+                                break;
+                            }
+                            if (refreshes == maxRefreshes)
+                            {
+                                failure = $"{playerAlias} did not reach the house. Still in combat after {maxRefreshes} cell refresh attempts.";
+                                break;
+                            }
+                        }
+
+                        // Call the movement bridge without the map wrapper's configurable action delay.
+                        Bot.Flash.Call("jumpCorrectRoom", cell, pad, false, false);
+                        Bot.Sleep(2_000);
+                    }
+                    catch
+                    {
+                        failure = $"{playerAlias} could not refresh the current cell before retrying the house.";
+                        break;
+                    }
                 }
-                catch
-                {
-                    failure = $"{playerAlias} could not refresh the current cell before retrying the house.";
+                if (!retryHouse)
                     break;
-                }
             }
         }
 
@@ -1276,6 +1305,8 @@ public class CoreLoneWolf
         this.blockedSimpleSkill = blockedSimpleSkill;
         this.blockedSimpleSkillTargetAura = blockedSimpleSkillTargetAura;
         skillIndex = 0;
+        if (mode == SkillEngineMode.LichOptimized)
+            ResetLich();
         if (mode == SkillEngineMode.ShadowStalkerOfTime)
             ResetSSOT();
         if (mode == SkillEngineMode.ArchivistOfTime)
@@ -1980,6 +2011,8 @@ public class CoreLoneWolf
             {
                 if (!Bot.Player.Alive)
                 {
+                    if (skillEngineMode == SkillEngineMode.LichOptimized)
+                        ResetLich();
                     if (skillEngineMode == SkillEngineMode.ShadowStalkerOfTime)
                         ResetSSOT();
                     if (skillEngineMode == SkillEngineMode.ArchivistOfTime)
@@ -2274,6 +2307,8 @@ public class CoreLoneWolf
                             ChaosShaperSkillEngine();
                         else if (skillEngineMode == SkillEngineMode.KathoolAdeptOptimized)
                             KathoolAdeptOptimizedSkillEngine();
+                        else if (skillEngineMode == SkillEngineMode.LichOptimized)
+                            LichOptimizedSkillEngine();
                         else if (
                             skillEngineMode == SkillEngineMode.Simple
                             && blockedSimpleSkill is >= 1 and <= 4
@@ -2792,6 +2827,72 @@ public class CoreLoneWolf
             return;
 
         index = (index + 1) % skills.Length;
+    }
+
+    private void ResetLich()
+    {
+        lichOpeningComplete = false;
+        skillIndex = 0;
+        lichPendingSkill = 0;
+        lichNextFallbackSkill = 2;
+    }
+
+    private bool CanUseLichSkillThree()
+    {
+        int health = Bot.Player.Health;
+        int maxHealth = Bot.Player.MaxHealth;
+        return maxHealth > 0
+            && (double)health / maxHealth * 100 > 80
+            && !Bot.Self.HasActiveAura("Necrotic Edge");
+    }
+
+    private void LichOptimizedSkillEngine()
+    {
+        if (!Bot.Player.Alive)
+        {
+            ResetLich();
+            return;
+        }
+
+        if (!Bot.Player.HasTarget || Bot.Player.Target?.HP <= 0)
+            return;
+
+        int[] skills = GetSkillList();
+        if (skills.Length == 0)
+            return;
+
+        if (!lichOpeningComplete)
+        {
+            bool finalOpeningSkill = skillIndex == skills.Length - 1;
+            StrictSkillEngine(skills, ref skillIndex);
+            if (finalOpeningSkill && skillIndex == 0)
+                lichOpeningComplete = true;
+            return;
+        }
+
+        if (lichPendingSkill == 0)
+        {
+            if (!Bot.Skills.CanUseSkill(4))
+                return;
+
+            int nextSkill = CanUseLichSkillThree() ? 3 : lichNextFallbackSkill;
+            if (Bot.Skills.UseSkill(4))
+                lichPendingSkill = nextSkill;
+            return;
+        }
+
+        if (lichPendingSkill == 3 && !CanUseLichSkillThree())
+            lichPendingSkill = lichNextFallbackSkill;
+
+        if (!Bot.Skills.CanUseSkill(lichPendingSkill))
+            return;
+
+        if (!Bot.Skills.UseSkill(lichPendingSkill))
+            return;
+
+        if (lichPendingSkill != 3)
+            lichNextFallbackSkill = lichPendingSkill == 2 ? 1 : 2;
+        lichPendingSkill = 0;
     }
 
     private void ResetSSOT()
@@ -7064,6 +7165,7 @@ public enum SkillEngineMode
     MartialArtist,
     ChaosShaper,
     KathoolAdeptOptimized,
+    LichOptimized,
 }
 
 public class ClassPreset

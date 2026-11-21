@@ -173,7 +173,7 @@ public class AllUltras_LW
         new Option<UltraDrakath_LW.ArmyComposition>(
             "ChampionDrakathComposition",
             "→ Champion Drakath Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nPay2Win2: Guardian / PCM / LR / LOO\nPay2Win3: Martial Artist / PCM / LR / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: Chaos Slayer / SC / AP / LOO\nPay2Win: Guardian / AP / LR / LOO\nPay2Win2: Guardian / PCM / LR / LOO\nPay2Win3: Martial Artist / PCM / LR / LOO\nTest: KE / SoF / LR / AP",
             UltraDrakath_LW.ArmyComposition.Default
         ),
         new Option<bool>(
