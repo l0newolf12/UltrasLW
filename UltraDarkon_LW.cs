@@ -18,11 +18,14 @@ public class UltraDarkon_LW
 {
     public enum ArmyComposition
     {
-        Default = 0,
-        Stable = 1,
-        Reliable = 2,
-        Optimized = 3,
-        Pay2Win = 4,
+        Default,
+        Stable,
+        Reliable,
+        Optimized,
+        Pay2Win,
+        Test,
+        Test2,
+        Test3,
     }
 
     private enum FightResult
@@ -85,7 +88,7 @@ public class UltraDarkon_LW
         new Option<ArmyComposition>(
             "ArmyComposition",
             "Army Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO\nTest: Lich / SoF / LR / LOO\nTest2: PhCM / SoF / LR / LOO\nTest3: AI / SoF / LR / LOO",
             ArmyComposition.Default
         ),
         new Option<int>(
@@ -262,11 +265,16 @@ public class UltraDarkon_LW
             );
 
         if (GetSetupOption<bool>("UsePotions"))
+        {
+            if (UsesTestRules() && LoneWolf.IsArmyPlayer(2))
+                preset.Elixir = LoneWolf.GetDivineElixir(preset, playerAlias, LogPrefix);
+
             LoneWolf.PreparePotions(
                 preset.Tonic,
                 preset.Elixir,
                 preset.CombatPotion
             );
+        }
 
         if (isTaunter)
             LoneWolf.PrepareScrolls(EnrageScroll);
@@ -315,7 +323,11 @@ public class UltraDarkon_LW
         if (isTaunter)
             LoneWolf.EquipScroll(EnrageScroll);
 
-        LoneWolf.GenericPrebuff();
+        if (
+            !UsesTestRules()
+            || (!LoneWolf.IsArmyPlayer(1) && !LoneWolf.IsArmyPlayer(2))
+        )
+            LoneWolf.GenericPrebuff();
         return !Bot.ShouldExit;
     }
 
@@ -516,7 +528,7 @@ public class UltraDarkon_LW
             if (tauntScheduled && DateTimeOffset.Now >= tauntAt)
             {
                 bool waitsForLooSkillFour =
-                    armyComposition == ArmyComposition.Pay2Win
+                    (armyComposition == ArmyComposition.Pay2Win || UsesTestRules())
                     && LoneWolf.IsArmyPlayer(4)
                     && (
                         looSkillFourRequested
@@ -1012,19 +1024,33 @@ public class UltraDarkon_LW
         armyComposition == ArmyComposition.Stable
         || armyComposition == ArmyComposition.Optimized;
 
-    private bool IsTaunter() =>
-        armyComposition == ArmyComposition.Pay2Win
+    private bool UsesTestRules() =>
+        armyComposition is ArmyComposition.Test or ArmyComposition.Test2 or ArmyComposition.Test3;
+
+    private bool IsTaunter()
+    {
+        if (UsesTestRules())
+            return LoneWolf.IsArmyPlayer(3) || LoneWolf.IsArmyPlayer(4);
+
+        return armyComposition == ArmyComposition.Pay2Win
             ? LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(4)
             : UsesPlayerOneAndTwoTaunters()
                 ? LoneWolf.IsArmyPlayer(1) || LoneWolf.IsArmyPlayer(2)
                 : LoneWolf.IsArmyPlayer(2) || LoneWolf.IsArmyPlayer(3);
+    }
 
-    private bool IsArchPaladinPlayer() => LoneWolf.IsArmyPlayer(3);
+    private bool IsArchPaladinPlayer() =>
+        !UsesTestRules() && LoneWolf.IsArmyPlayer(3);
 
-    private bool IsOpeningTauntOwner() =>
-        UsesPlayerOneAndTwoTaunters()
+    private bool IsOpeningTauntOwner()
+    {
+        if (UsesTestRules())
+            return LoneWolf.IsArmyPlayer(3);
+
+        return UsesPlayerOneAndTwoTaunters()
             ? LoneWolf.IsArmyPlayer(1)
             : LoneWolf.IsArmyPlayer(2);
+    }
 
     private ClassPreset GetClassPreset()
     {
@@ -1032,7 +1058,18 @@ public class UltraDarkon_LW
 
         if (LoneWolf.IsArmyPlayer(1))
         {
-            if (armyComposition == ArmyComposition.Pay2Win)
+            if (UsesTestRules())
+            {
+                preset = armyComposition switch
+                {
+                    ArmyComposition.Test2 => LoneWolf.PhantomChronomancer(),
+                    ArmyComposition.Test3 => LoneWolf.ArcanaInvoker(),
+                    _ => LoneWolf.Lich(optimizedMode: true),
+                };
+                preset.HelmEnhancement = HelmSpecial.Examen;
+                preset.CapeEnhancement = CapeSpecial.Penitence;
+            }
+            else if (armyComposition == ArmyComposition.Pay2Win)
                 preset = LoneWolf.Guardian();
             else if (armyComposition == ArmyComposition.Reliable)
             {
@@ -1055,8 +1092,21 @@ public class UltraDarkon_LW
         }
         else if (LoneWolf.IsArmyPlayer(2))
         {
-            preset = LoneWolf.StoneCrusher();
+            if (UsesTestRules())
+            {
+                preset = LoneWolf.ScionOfFlames(healerMode: true);
+                preset.HelmEnhancement = HelmSpecial.Pneuma;
+                preset.Elixir = "Divine Elixir";
+            }
+            else
+                preset = LoneWolf.StoneCrusher();
+
             preset.CapeEnhancement = CapeSpecial.Absolution;
+        }
+        else if (LoneWolf.IsArmyPlayer(3) && UsesTestRules())
+        {
+            preset = LoneWolf.LegionRevenant();
+            preset.CapeEnhancement = CapeSpecial.Penitence;
         }
         else if (LoneWolf.IsArmyPlayer(3))
         {

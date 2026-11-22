@@ -25,7 +25,7 @@ public class UltraDrakath_LW
         Pay2Win,
         Pay2Win2,
         Pay2Win3,
-        Test = 7,
+        Test,
     }
 
     private enum FightResult

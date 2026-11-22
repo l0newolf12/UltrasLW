@@ -26,10 +26,10 @@ public class UltraSpeaker_LW
 
     public enum ArmyComposition
     {
-        Default = 0,
-        Reliable = 1,
-        Pay2Win = 2,
-        Fast = 5,
+        Default,
+        Reliable,
+        Pay2Win,
+        Fast,
     }
 
     private sealed class SpeakerStep

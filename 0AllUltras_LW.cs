@@ -221,7 +221,7 @@ public class AllUltras_LW
         new Option<UltraDarkon_LW.ArmyComposition>(
             "UltraDarkonComposition",
             "→ Ultra Darkon Composition",
-            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO",
+            "Default: LR / SC / AP / LOO\nStable: KE / SC / AP / LOO\nReliable: VDK / SC / AP / LOO\nOptimized: LC / SC / AP / LOO\nPay2Win: Guardian / SC / AP / LOO\nTest: Lich / SoF / LR / LOO\nTest2: PhCM / SoF / LR / LOO\nTest3: AI / SoF / LR / LOO",
             UltraDarkon_LW.ArmyComposition.Default
         ),
         new Option<bool>(

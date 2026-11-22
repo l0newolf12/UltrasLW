@@ -127,6 +127,12 @@ public class CLWSkillsTest
             false
         ),
         new Option<bool>(
+            "UseScionOfFlamesHealerMode",
+            "Use Scion of Flames Healer Mode",
+            "Use the 18-step Strict Healer combo for Scion of Flames.",
+            false
+        ),
+        new Option<bool>(
             "UseGlaceranWarlordHealingMode",
             "Use Glaceran Warlord Healing Mode",
             "Use the healing Strict combo and Penitence cape for Glaceran Warlord.",
@@ -190,6 +196,9 @@ public class CLWSkillsTest
             "UseKathoolAdeptOptimizedMode"
         );
         bool useLichOptimizedMode = Bot.Config.Get<bool>("UseLichOptimizedMode");
+        bool useScionOfFlamesHealerMode = Bot.Config.Get<bool>(
+            "UseScionOfFlamesHealerMode"
+        );
         ClassPreset preset = GetClassPreset(
             selectedPreset,
             useLightCasterHealingMode,
@@ -198,7 +207,8 @@ public class CLWSkillsTest
             useChaosAvengerOptimizedMode,
             useGlaceranWarlordHealingMode,
             useKathoolAdeptOptimizedMode,
-            useLichOptimizedMode
+            useLichOptimizedMode,
+            useScionOfFlamesHealerMode
         );
 
         Core.Join("classhall");
@@ -284,7 +294,8 @@ public class CLWSkillsTest
         bool useChaosAvengerOptimizedMode,
         bool useGlaceranWarlordHealingMode,
         bool useKathoolAdeptOptimizedMode,
-        bool useLichOptimizedMode
+        bool useLichOptimizedMode,
+        bool useScionOfFlamesHealerMode
     ) =>
         selectedPreset switch
         {
@@ -313,7 +324,9 @@ public class CLWSkillsTest
             SkillPresetChoice.Chaos_Avenger => LoneWolf.ChaosAvenger(
                 useChaosAvengerOptimizedMode
             ),
-            SkillPresetChoice.Scion_of_Flames => LoneWolf.ScionOfFlames(),
+            SkillPresetChoice.Scion_of_Flames => LoneWolf.ScionOfFlames(
+                useScionOfFlamesHealerMode
+            ),
             SkillPresetChoice.Arachnomancer => LoneWolf.Arachnomancer(),
             SkillPresetChoice.Imperial_Chunin => LoneWolf.ImperialChunin(),
             SkillPresetChoice.SSOT => LoneWolf.SSOT(),

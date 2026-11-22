@@ -18,10 +18,10 @@ public class UltraGramiel_LW
 {
     public enum ArmyComposition
     {
-        Default = 0,
-        Optimized = 1,
-        Reliable = 2,
-        Pay2Win = 3,
+        Default,
+        Optimized,
+        Reliable,
+        Pay2Win,
         Abyssal,
     }
 

@@ -793,17 +793,24 @@ public class CoreLoneWolf
             CombatPotion = "Felicitous Philtre",
         };
 
-    public ClassPreset ScionOfFlames() =>
+    public ClassPreset ScionOfFlames(bool healerMode = false) =>
         new()
         {
             ClassName = "Scion of Flames",
-            Skills = new[]
-            {
-                1, 0, 4, 3, 1, 2,
-                1, 1, 1, 0, 2, 3,
-                1, 4, 1, 2, 1, 1, 1,
-                0, 3, 1, 2, 1, 1, 1, 2, 1
-            },
+            Skills = healerMode
+                ? new[]
+                {
+                    4, 3, 2, 1, 1, 1, 2, 1, 0,
+                    3, 4, 2, 1, 1, 1, 2, 1, 0
+                }
+                : new[]
+                {
+                    4, 3, 1, 2, 1,
+                    1, 1, 1, 0, 2, 3,
+                    1, 4, 1, 2, 1, 1, 1,
+                    0, 3, 1, 2, 1, 1, 1, 2, 1,
+                    0
+                },
             SkillMode = SkillEngineMode.Strict,
             BaseEnhancement = EnhancementType.Wizard,
             CapeEnhancement = CapeSpecial.Vainglory,
