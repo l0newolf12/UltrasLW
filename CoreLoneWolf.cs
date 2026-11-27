@@ -295,6 +295,22 @@ public class CoreLoneWolf
             {
                 Core.Logger("VibeSkua Streamer Mode setup could not be completed.", "SetAntiLag");
             }
+
+            try
+            {
+                var options = Bot.Options;
+                var watchdog = options.GetType().GetProperty(
+                    "EnableScriptWatchdog",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance
+                );
+                if (watchdog?.PropertyType == typeof(bool) && watchdog.SetMethod?.IsPublic == true
+                    && watchdog.GetIndexParameters().Length == 0)
+                    watchdog.SetValue(options, false);
+            }
+            catch
+            {
+                Core.Logger("VibeSkua script watchdog could not be disabled.", "SetAntiLag");
+            }
         }
 
         Bot.Options.HidePlayers = true;
